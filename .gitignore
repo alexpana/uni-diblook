@@ -1,3 +1,7 @@
+# Project files
+build/vc2008
+binaries/
+
 # Compiled Object files
 *.slo
 *.lo
