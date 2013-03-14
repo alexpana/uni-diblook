@@ -22,6 +22,12 @@
 
 #include <math.h>
 
+#include "BitmapInfoDlg.h"
+#include "ThresholdDlg.h"
+
+#include "Histogram.h"
+#include "HistogramDlg.h"
+
 #ifdef _DEBUG
 #undef THIS_FILE
 static char BASED_CODE THIS_FILE[] = __FILE__;
@@ -108,6 +114,11 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_FILE_PRINT, CScrollView::OnFilePrint)
 	ON_COMMAND(ID_FILE_PRINT_PREVIEW, CScrollView::OnFilePrintPreview)
 	ON_COMMAND(ID_LABORATOR1_CROPCIRCLE, &CDibView::OnLaborator1Cropcircle)
+	ON_COMMAND(ID_LABORATOR2_AFISAREINFO, &CDibView::OnLaborator2Afisareinfo)
+	ON_COMMAND(ID_LABORATOR2_GRAYSCALE2, &CDibView::OnLaborator2Grayscale2)
+	ON_COMMAND(ID_LABORATOR2_BLACKWHITE, &CDibView::OnLaborator2Blackwhite)
+	ON_COMMAND(ID_LABORATOR3_HISTOGRAMA, &CDibView::OnLaborator3Histograma)
+	ON_COMMAND(ID_LABORATOR3_REDUCE, &CDibView::OnLaborator3Reduce)
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -365,7 +376,7 @@ BYTE getPixelColor( BYTE* src, int w, int x, int y, int bpp ){
 			}
 
 		default:
-			break;
+			return 0;
 	}
 }
 
@@ -425,3 +436,132 @@ void CDibView::OnLaborator1Cropcircle()
 
 	END_PROCESSING("Crop Circle");
 }
+
+void CDibView::OnLaborator2Afisareinfo()
+{
+	BEGIN_SOURCE_PROCESSING;
+	CBitmapInfoDlg dlgBitmap;
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+
+	dlgBitmap.m_HeaderSize.Format("Header Size: %d", 10 );
+	dlgBitmap.m_BPP.Format("BPP: %d", pBitmapInfoSrc->bmiHeader.biBitCount);
+	dlgBitmap.m_Width.Format("Width: %d", pBitmapInfoSrc->bmiHeader.biWidth);
+	dlgBitmap.m_Height.Format("Height: %d", pBitmapInfoSrc->bmiHeader.biHeight);
+	dlgBitmap.m_LUTSize.Format("LUT Size: %d", iColors );
+
+	CString buffer;
+	for( int i = 0;i<iColors; ++i ){
+		buffer.Format( "%3d.\t%3d\t%3d\t%3d\t\r\n", i, 
+			bmiColorsSrc[i].rgbRed,
+			bmiColorsSrc[i].rgbGreen,
+			bmiColorsSrc[i].rgbBlue);
+			dlgBitmap.m_LUT += buffer;
+	}
+
+	dlgBitmap.DoModal();
+	END_SOURCE_PROCESSING;
+}
+
+void CDibView::OnLaborator2Grayscale2()
+{
+	BEGIN_PROCESSING()
+
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+
+	if( pBitmapInfoSrc->bmiHeader.biBitCount == 24 ){
+
+		for( int i = 0; i < dwHeight; ++i ){
+			for( int  j = 0; j < dwWidth; ++j ){
+				BYTE r, g, b;
+				getPixelColor24( lpSrc, w, i, j, r, g, b );
+				int gray = ( r + g + b ) / 3;
+				setPixelColor24( lpDst, w, i, j, gray, gray, gray );
+			}
+		}
+	}
+	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
+		for( int i = 0; i < iColors; ++i ){
+			int gray = (bmiColorsSrc[i].rgbRed + bmiColorsSrc[i].rgbGreen + bmiColorsSrc[i].rgbBlue ) / 3;
+			bmiColorsDst[i].rgbRed = gray;
+			bmiColorsDst[i].rgbGreen = gray;
+			bmiColorsDst[i].rgbBlue = gray;
+		}
+
+		// SORT IT!!
+		BYTE g[256];
+		for( int k = 0; k < iColors; ++k ){
+			g[k] = bmiColorsDst[k].rgbRed;
+			bmiColorsDst[k].rgbRed = bmiColorsDst[k].rgbGreen = bmiColorsDst[k].rgbBlue = k;
+		}
+
+		for( int i = 0; i < dwHeight; ++i ){
+			for( int  j = 0; j < dwWidth; ++j ){
+				int k = getPixelColor( lpDst, w, i, j, 8 );
+				setPixelColor(lpDst, w, i, j, g[k], 8);
+			}
+		}
+	}
+
+	END_PROCESSING("Grayscale")
+}
+
+void CDibView::OnLaborator2Blackwhite()
+{
+	BEGIN_PROCESSING()
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+	CThresholdDlg dlg;
+	dlg.DoModal();
+	int threshold = dlg.m_Value;
+
+	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
+		for( int i = 0; i < dwHeight; ++i ){
+			for( int  j = 0; j < dwWidth; ++j ){
+				int k = getPixelColor( lpDst, w, i, j, 8 );
+				if( bmiColorsDst[k].rgbBlue < threshold ){
+					bmiColorsDst[k].rgbBlue = bmiColorsDst[k].rgbRed = bmiColorsDst[k].rgbGreen = 0;
+				} else {
+					bmiColorsDst[k].rgbBlue = bmiColorsDst[k].rgbRed = bmiColorsDst[k].rgbGreen = 255;
+				}
+			}
+		}
+	}
+	END_PROCESSING("Black and White")
+}
+
+void CDibView::OnLaborator3Reduce()
+{
+	OnLaborator3Histograma();
+}
+
+void CDibView::OnLaborator3Histograma()
+{
+	BEGIN_SOURCE_PROCESSING;
+
+	CHistogram histogram;
+
+	CHistogramDlg histogramdlg;
+	histogramdlg.m_Histogram = &histogram;
+
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+	histogram.maxValue = 0;
+	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
+		for( int i = 0; i < dwWidth; ++i ){
+			for( int j = 0; j < dwHeight; ++j ){
+				int val = getPixelColor(lpSrc, w, i, j, 8 ) & 0xff;
+				histogram.values[val] += 1;
+				if( histogram.values[val] > histogram.maxValue ){
+					histogram.maxValue = histogram.values[val];
+				}
+				if( histogram.maxValue < 0 ){
+					histogram.maxValue = 0;
+				}
+			}
+		}
+	} else {
+		return;
+	}
+
+	histogramdlg.DoModal();
+	END_SOURCE_PROCESSING;
+}
+

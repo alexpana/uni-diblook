@@ -53,6 +53,11 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnLaborator1Cropcircle();
+	afx_msg void OnLaborator2Afisareinfo();
+	afx_msg void OnLaborator2Grayscale2();
+	afx_msg void OnLaborator2Blackwhite();
+	afx_msg void OnLaborator3Histograma();
+	afx_msg void OnLaborator3Reduce();
 };
 
 /////////////////////////////////////////////////////////////////////////////
