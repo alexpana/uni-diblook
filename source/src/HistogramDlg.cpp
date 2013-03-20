@@ -18,6 +18,7 @@ CHistogramDlg::CHistogramDlg(CWnd* pParent )
 
 CHistogramDlg::~CHistogramDlg()
 {
+	delete m_Histogram;
 }
 
 void CHistogramDlg::DoDataExchange(CDataExchange* pDX)
@@ -40,7 +41,7 @@ void CHistogramDlg::OnPaint()
 	POINT pct;
 	for( int i = 0; i < m_Histogram->length; ++i ){
 		pct.x = LEFT + i;
-		int N = ((float)m_Histogram->normalizedValue(i) / (float)m_Histogram->normalizedMax() ) * HEIGHT;
+		int N = (int)(((float)m_Histogram->normalizedValue(i) / (float)m_Histogram->normalizedMax() ) * HEIGHT);
 		for( int j = 0; j < N; ++j ){
 			pct.y = BOTTOM - j;
 			dc.SetPixel(pct, RGB( 0, 0, 0 ) );

@@ -154,6 +154,11 @@ BEGIN
         BEGIN
             MENUITEM "Histograma",                  ID_LABORATOR3_HISTOGRAMA
             MENUITEM "Reduce Colors",               ID_LABORATOR3_REDUCE
+            MENUITEM "Dither",                      ID_LABORATOR3_DITHER
+        END
+        POPUP "Laborator4"
+        BEGIN
+            MENUITEM "Binary Objects Information",  ID_LABORATOR4BINARYOBJECTSINFORMATION
         END
     END
 END

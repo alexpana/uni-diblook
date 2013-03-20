@@ -36,6 +36,8 @@ public:
 	virtual void OnActivateView(BOOL bActivate, CView* pActivateView,
 					CView* pDeactiveView);
 
+	virtual void OnLButtonDblClk(UINT nFlags, CPoint point);
+
 	// Printing support
 protected:
 	virtual BOOL OnPreparePrinting(CPrintInfo* pInfo);
@@ -57,7 +59,9 @@ public:
 	afx_msg void OnLaborator2Grayscale2();
 	afx_msg void OnLaborator2Blackwhite();
 	afx_msg void OnLaborator3Histograma();
+	afx_msg void OnLaborator3Dither();
 	afx_msg void OnLaborator3Reduce();
+	afx_msg void OnLaborator4BinaryObjectsInformation();
 };
 
 /////////////////////////////////////////////////////////////////////////////

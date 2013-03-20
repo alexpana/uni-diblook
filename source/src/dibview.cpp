@@ -28,6 +28,11 @@
 #include "Histogram.h"
 #include "HistogramDlg.h"
 
+#include "BinaryObject.h"
+
+#include <vector>
+using namespace std;
+
 #ifdef _DEBUG
 #undef THIS_FILE
 static char BASED_CODE THIS_FILE[] = __FILE__;
@@ -101,6 +106,7 @@ static char BASED_CODE THIS_FILE[] = __FILE__;
 IMPLEMENT_DYNCREATE(CDibView, CScrollView)
 
 BEGIN_MESSAGE_MAP(CDibView, CScrollView)
+
 	//{{AFX_MSG_MAP(CDibView)
 	ON_COMMAND(ID_EDIT_COPY, OnEditCopy)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_COPY, OnUpdateEditCopy)
@@ -108,17 +114,24 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_UPDATE_COMMAND_UI(ID_EDIT_PASTE, OnUpdateEditPaste)
 	ON_MESSAGE(WM_DOREALIZE, OnDoRealize)
 	ON_COMMAND(ID_PROCESSING_PARCURGERESIMPLA, OnProcessingParcurgereSimpla)
-	//}}AFX_MSG_MAP
 
 	// Standard printing commands
 	ON_COMMAND(ID_FILE_PRINT, CScrollView::OnFilePrint)
 	ON_COMMAND(ID_FILE_PRINT_PREVIEW, CScrollView::OnFilePrintPreview)
+
+
 	ON_COMMAND(ID_LABORATOR1_CROPCIRCLE, &CDibView::OnLaborator1Cropcircle)
 	ON_COMMAND(ID_LABORATOR2_AFISAREINFO, &CDibView::OnLaborator2Afisareinfo)
 	ON_COMMAND(ID_LABORATOR2_GRAYSCALE2, &CDibView::OnLaborator2Grayscale2)
 	ON_COMMAND(ID_LABORATOR2_BLACKWHITE, &CDibView::OnLaborator2Blackwhite)
 	ON_COMMAND(ID_LABORATOR3_HISTOGRAMA, &CDibView::OnLaborator3Histograma)
 	ON_COMMAND(ID_LABORATOR3_REDUCE, &CDibView::OnLaborator3Reduce)
+	ON_COMMAND(ID_LABORATOR3_DITHER, &CDibView::OnLaborator3Dither)
+	ON_COMMAND(ID_LABORATOR4_BINARYOBJECTSINFORMATION, &CDibView::OnLaborator4BinaryObjectsInformation)
+
+	ON_WM_LBUTTONDBLCLK()
+
+	//}}AFX_MSG_MAP
 END_MESSAGE_MAP()
 
 /////////////////////////////////////////////////////////////////////////////
@@ -131,6 +144,134 @@ CDibView::CDibView()
 CDibView::~CDibView()
 {
 }
+
+#define II( argx, argy ) ( obColor == lpSrc[(argx) * w + (argy)] ? 1 : 0 )
+
+void CDibView::OnLButtonDblClk( UINT nFlags, CPoint point )
+{
+	BEGIN_SOURCE_PROCESSING;
+	int x = point.x;
+	int y = dwHeight - point.y - 1;
+	int obColor = lpSrc[y * w + x];
+
+	BinaryObject ob;
+
+	// Area
+	// -----------------------------------------------------------------
+	for( int r = 0; r < dwHeight; ++r ){
+		for( int c = 0; c < dwWidth; ++c ){
+			ob.area += II(r, c);
+		}
+	}
+
+	// Perimeter
+	// -----------------------------------------------------------------
+	ob.perimeter = 0;
+	for( int r = 0; r < dwHeight; ++r ){
+		for( int c = 0; c < dwWidth; ++c ){
+			if( ! II(r, c) )
+				continue;
+
+			bool isEdgePixel = false;
+
+			for( int i = max( r - 1, 0 ); i < min( r+2, dwHeight - 1 ); ++i ){
+				for( int j = max( c - 1, 0 ); j < min( c+2, dwWidth - 1 ); ++j )
+					if( lpSrc[ i * w + j ] != obColor )
+						isEdgePixel = true;
+			}
+
+			if( isEdgePixel )
+				ob.perimeter += 1;
+		}
+	}
+
+
+	// Center of Mass
+	// -----------------------------------------------------------------
+	for( int r = 0; r < dwHeight; ++r ){
+		for( int c = 0; c < dwWidth; ++c ){
+			ob.centerOfMass.x += c * II(r, c);
+			ob.centerOfMass.y += r * II(r, c);
+		}
+	}
+	ob.centerOfMass.x = (LONG)((float)(ob.centerOfMass.x) * (1.0f / (float)(ob.area)));
+	ob.centerOfMass.y = (LONG)((float)(ob.centerOfMass.y) * (1.0f / (float)(ob.area)));
+
+	// Circularity
+	// -----------------------------------------------------------------
+	ob.thinnessRatio = 4.0f * 3.14152f * (float)ob.area / (float)(ob.perimeter * ob.perimeter);
+
+	// Aspect Ratio
+	// -----------------------------------------------------------------
+	int minX, minY, maxX, maxY;
+	maxX = maxY = 0;
+	minY = dwHeight;
+	minX = dwWidth;
+	for( int r = 0; r < dwHeight; ++r ){
+		for( int c = 0; c < dwWidth; ++c ){
+			if( ! II( r, c ) ){
+				continue;
+			}
+			if( r < minY ) minY = r;
+			if( r > maxY ) maxY = r;
+			if( c < minX ) minX = c;
+			if( c > maxX ) maxX = c;
+		}
+	}
+
+	ob.aspectRatio = (float)( maxX - minX + 1 ) / (float)(maxY - minY + 1);
+
+	// Projection
+	// -----------------------------------------------------------------
+	ob.projectionsXSize = dwWidth;
+	ob.projectionsYSize = dwHeight;
+	ob.projectionsX = new int[ dwWidth ];
+	ob.projectionsY = new int[ dwHeight ];
+
+	for( int r = 0; r < dwHeight; ++r ){
+		int count = 0;
+		for( int c = 0; c <= dwWidth; ++c ){
+			count += II( r, c );
+		}
+		ob.projectionsY[r] = count;
+	}
+
+	for( int c = 0; c < dwWidth; ++c ){
+		int count = 0;
+		for( int r = 0; r <= dwHeight; ++r ){
+			count += II( r, c );
+		}
+		ob.projectionsX[c] = count;
+	}
+
+	// Axis of elongation
+	// -----------------------------------------------------------------
+	float A = 0.0f;
+	float B = 0.0f;
+	float C = 0.0f;
+
+	for( int r = 0; r < dwHeight; ++r ){
+		for( int c = 0; c < dwWidth; ++c ){
+			A += 2 * ( r - ob.centerOfMass.y ) * ( c - ob.centerOfMass.x ) * II( r, c );
+			B += ( c - ob.centerOfMass.x ) * ( c - ob.centerOfMass.x ) * II( r, c );
+			C += ( r - ob.centerOfMass.y ) * ( r - ob.centerOfMass.y ) * II( r, c );
+		}
+	}
+
+	ob.elongationAxis = atan2( A, (B-C) );
+
+	// =================================================================
+	//	Display the results
+	// =================================================================
+	if( x > 0 && x < dwWidth && y > 0 && y < dwHeight ){
+		AfxMessageBox(ob.toCString());
+	}
+
+	END_SOURCE_PROCESSING;
+
+	CScrollView::OnLButtonDblClk(nFlags, point);
+}
+
 
 /////////////////////////////////////////////////////////////////////////////
 // CDibView drawing
@@ -528,40 +669,165 @@ void CDibView::OnLaborator2Blackwhite()
 	END_PROCESSING("Black and White")
 }
 
-void CDibView::OnLaborator3Reduce()
-{
-	OnLaborator3Histograma();
+CHistogram* getHistogram( BYTE* image, int width, int height ){
+	CHistogram* histogram = new CHistogram();
+	histogram->maxValue = 0;
+	for( int i = 0; i < width; ++i ){
+		for( int j = 0; j < height; ++j ){
+			int val = getPixelColor(image, width, i, j, 8 ) & 0xff;
+			histogram->values[val] += 1;
+			if( histogram->values[val] > histogram->maxValue ){
+				histogram->maxValue = histogram->values[val];
+			}
+			if( histogram->maxValue < 0 ){
+				histogram->maxValue = 0;
+			}
+		}
+	}
+	return histogram;
 }
 
 void CDibView::OnLaborator3Histograma()
 {
 	BEGIN_SOURCE_PROCESSING;
 
-	CHistogram histogram;
-
-	CHistogramDlg histogramdlg;
-	histogramdlg.m_Histogram = &histogram;
+	CHistogram* histogram = nullptr;
 
 	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
-	histogram.maxValue = 0;
 	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
-		for( int i = 0; i < dwWidth; ++i ){
-			for( int j = 0; j < dwHeight; ++j ){
-				int val = getPixelColor(lpSrc, w, i, j, 8 ) & 0xff;
-				histogram.values[val] += 1;
-				if( histogram.values[val] > histogram.maxValue ){
-					histogram.maxValue = histogram.values[val];
-				}
-				if( histogram.maxValue < 0 ){
-					histogram.maxValue = 0;
-				}
-			}
-		}
+		histogram = getHistogram( lpSrc, dwWidth, dwHeight );
 	} else {
 		return;
 	}
 
+	// display the histogram
+	CHistogramDlg histogramdlg;
+	histogramdlg.m_Histogram = histogram;
 	histogramdlg.DoModal();
+
 	END_SOURCE_PROCESSING;
 }
 
+int getNearestHistogramValue( int oldValue, const std::vector<int>& table ){
+	int fittest = 0;
+	for( auto it = table.begin(); it != table.end(); ++it ){
+		if( abs( oldValue - *it ) < abs( oldValue - fittest ) ){
+			fittest = *it;
+		}
+	}
+	return fittest;
+}
+
+vector<int> getReducedHistogram( CHistogram& hist ){
+	static int WH = 7;
+	static float TH = 0.001f;
+
+	std::vector<int> values;
+	values.push_back(0);
+
+	for( int k = WH; k < 255 - WH; ++k ){
+		float max = 0;
+		float average = 0;
+		for( int i = k - WH; i < k + WH; ++i ){
+			float val = hist.normalizedValue(i);
+			if( val > max ){
+				max = val;
+			}
+			average += val;
+		}
+		average /= (float) 2*WH + 1;
+
+		if( hist.normalizedValue(k) == max && hist.normalizedValue(k) > average + TH ){
+			values.push_back(k);
+		}
+	}
+	values.push_back(255);
+	return values;
+}
+void CDibView::OnLaborator3Reduce()
+{
+	BEGIN_PROCESSING()
+
+	CHistogram hist = *getHistogram(lpSrc, dwWidth, dwHeight );
+	vector<int> values = getReducedHistogram( hist );
+
+	for( int i = 0; i < dwHeight; ++i ){
+		for( int  j = 0; j < dwWidth; ++j ){
+			BYTE color = getPixelColor( lpSrc, w, i, j, 8 );
+			setPixelColor( lpDst, w, i, j, getNearestHistogramValue( color, values ), 8 );
+		}
+	}
+
+	END_PROCESSING("Reduce Colors")
+}
+
+void CDibView::OnLaborator4BinaryObjectsInformation()
+{
+	BEGIN_PROCESSING();
+
+	CDC dc;
+	dc.CreateCompatibleDC(0);
+	CBitmap bitmap;
+	HBITMAP hBitmap = CreateDIBitmap( ::GetDC(0), &((LPBITMAPINFO)lpS)->bmiHeader, CBM_INIT, lpSrc, (LPBITMAPINFO)lpS, DIB_RGB_COLORS );
+
+	bitmap.Attach(hBitmap);
+
+
+	END_PROCESSING("Binary Objects");
+}
+
+void CDibView::OnLaborator3Dither()
+{
+	BEGIN_PROCESSING()
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+
+	if( pBitmapInfoSrc->bmiHeader.biBitCount != 8 ){
+		// display a message
+		return;
+	}
+
+	CHistogram* hist = getHistogram(lpSrc, dwWidth, dwHeight );
+	vector<int> values = getReducedHistogram( *hist );
+
+	for( int i = 0; i < dwHeight; ++i ){
+		for( int  j = 0; j < dwWidth; ++j ){
+			BYTE source_color = getPixelColor(lpSrc, w, i, j, 8 );
+			setPixelColor( lpDst, w, i, j, source_color, 8 );
+		}
+	}
+
+	for( int y = dwHeight - 1; y >= 0; --y ){
+		for( int  x = 0; x < dwWidth; ++x ){
+			float error;
+			BYTE old_color = getPixelColor(lpDst, w, y, x, 8 );
+			BYTE new_color = getNearestHistogramValue( old_color, values );
+			setPixelColor(lpDst, w, y, x, new_color, 8 );
+			error = (float)(old_color - new_color);
+			BYTE color;
+
+			if( x < dwWidth-1 ){
+				BYTE scale = (BYTE)((7.0f / 16.0f) * error);
+				old_color = getPixelColor(lpDst, w, y, x+1, 8 );
+				setPixelColor( lpDst, w, y, x+1, old_color + scale, 8 );
+			}
+
+			if( y > 0 && x < dwWidth - 1 ){
+				color = (BYTE)((float)getPixelColor(lpDst, w, y-1, x+1, 8 ) + ((3.0 / 16.0) * error));
+				setPixelColor( lpDst, w, y-1, x+1, color, 8 );
+			}
+
+			if( y > 0 ){
+				color = (BYTE)((float)getPixelColor(lpDst, w, y-1, x, 8 ) + ((5.0 / 16.0) * error));
+				setPixelColor( lpDst, w, y-1, x, color, 8 );
+			}
+
+			if( y > 0 && x < dwWidth - 1 ){
+				color = (BYTE)((float)getPixelColor(lpDst, w, y-1, x+1, 8 ) + ((1.0 / 16.0) * error));
+				setPixelColor( lpDst, w, y-1, x+1, color, 8 );
+			}
+		}
+	}
+
+	//delete hist;
+	END_PROCESSING("Dither")
+}
