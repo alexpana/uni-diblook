@@ -27,10 +27,14 @@
 
 #include "Histogram.h"
 #include "HistogramDlg.h"
+#include "Image.h"
 
 #include "BinaryObject.h"
 
 #include <vector>
+#include <ctime>
+#include <cstdlib>
+
 using namespace std;
 
 #ifdef _DEBUG
@@ -100,6 +104,12 @@ static char BASED_CODE THIS_FILE[] = __FILE__;
 	CFrameWnd* pFrame=pDocTemplate->CreateNewFrame(pDocDest,NULL);	\
 	pDocTemplate->InitialUpdateFrame(pFrame,pDocDest);	\
 
+#define CONSTRUCT_SOURCE_IMAGE( img ) \
+	Image img( getBppFromColorSpace( iColors ), dwWidth, dwHeight, bmiColorsSrc, iColors, lpSrc );
+
+#define CONSTRUCT_DESTINATION_IMAGE( img ) \
+	Image img( getBppFromColorSpace( iColors ), dwWidth, dwHeight, bmiColorsDst, iColors, lpDst );
+
 /////////////////////////////////////////////////////////////////////////////
 // CDibView
 
@@ -128,6 +138,7 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR3_REDUCE, &CDibView::OnLaborator3Reduce)
 	ON_COMMAND(ID_LABORATOR3_DITHER, &CDibView::OnLaborator3Dither)
 	ON_COMMAND(ID_LABORATOR4_BINARYOBJECTSINFORMATION, &CDibView::OnLaborator4BinaryObjectsInformation)
+	ON_COMMAND(ID_LABORATOR5_MARKOBJECTS, &CDibView::OnLaborator5MarkObjects)
 
 	ON_WM_LBUTTONDBLCLK()
 
@@ -830,4 +841,125 @@ void CDibView::OnLaborator3Dither()
 
 	//delete hist;
 	END_PROCESSING("Dither")
+}
+
+int Parent( int a, int* parent ){
+	int p = a;
+	while( parent[p] != p ){
+		p = parent[p];
+	}
+	return p;
+}
+
+void NewPair( int a, int b, int *parent ){
+	parent[Parent(b, parent)] = Parent(a, parent);
+}
+
+int NewLabel(){
+	static int label = 1;
+	return label++;
+}
+
+void MarkObjects( const Image& src, Image& dst ){
+	int* pixelLabels = new int[src.GetWidth() * src.GetHeight()];
+	memset( pixelLabels, 0, src.GetWidth() * src.GetHeight() * sizeof( int ) );
+	int w = src.GetWidth();
+
+	int new_label = 1;
+
+	int* labelTree = new int[256];
+	for( int i = 0; i < 256; ++i ){
+		labelTree[i] = i;
+	}
+	
+	for( int i = src.GetHeight() - 2; i >= 0; --i ){
+		for( int j = 1; j < src.GetWidth() - 1; ++j ){
+
+			if( src.GetLutIndex( i, j ) == 0 ){
+				int X = src.GetLutIndex( i, j );
+				int A = src.GetLutIndex( i, j - 1 );
+				int B = src.GetLutIndex( i + 1, j - 1 );
+				int C = src.GetLutIndex( i + 1, j );
+				int D = src.GetLutIndex( i + 1, j + 1 );
+				int X_Label = Parent( pixelLabels[i * w + j], labelTree );
+				int A_Label = Parent( pixelLabels[i * w + j - 1], labelTree );
+				int B_Label = Parent( pixelLabels[(i+1) * w + j-1], labelTree );
+				int C_Label = Parent( pixelLabels[(i+1) * w + j], labelTree );
+				int D_Label = Parent( pixelLabels[(i+1) * w + j+1], labelTree );
+
+				// 1, 2
+				if( B == 0 ){
+					X_Label = B_Label;
+
+					if( C != 0 && D == 0 )
+					{
+						NewPair( B_Label, D_Label, labelTree );
+					}
+					pixelLabels[i * w + j] = X_Label;
+					continue;
+				}
+
+				// 3, 4, 5
+				if( A == 0 ){
+					X_Label = A_Label;
+
+					if( C == 0 ){
+						NewPair( A_Label, C_Label, labelTree );
+					} else {
+						if( D == 0 ){
+							NewPair( A_Label, D_Label, labelTree );
+						}
+					}
+					pixelLabels[i * w + j] = X_Label;
+					continue;
+				}
+
+				// 6
+				if( C == 0 ){
+					X_Label = C_Label;
+					pixelLabels[i * w + j] = X_Label;
+					continue;
+				}
+
+				// 7
+				if( D == 0 ){
+					X_Label = D_Label;
+					pixelLabels[i * w + j] = X_Label;
+					continue;
+				}
+
+				// 8
+				X_Label = new_label++;
+				pixelLabels[i * w + j] = X_Label;
+			}
+		}
+
+		for( int i = 0; i < src.GetHeight(); ++i ){
+			for( int j = 0; j < src.GetWidth(); ++j ){
+				int index = i * w + j;
+				int value = Parent( pixelLabels[i * w + j], labelTree );
+				if( src.GetLutIndex( i, j ) == 0 ){
+					dst.SetPixelLUTIndex( i, j, value );
+				}
+			}
+		}
+
+		// Add some pretty colors to the destination LUT
+		srand (time(NULL));
+		for( int i = 1; i < 254; ++i ){
+			Color c( rand() % 255, rand() % 255, rand() % 255 );
+			dst.SetLUTColor( i, c );
+		}
+	}
+}
+
+void CDibView::OnLaborator5MarkObjects(){
+	BEGIN_PROCESSING();
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	MarkObjects( imgSrc, imgDst );
+
+	END_PROCESSING("Mark Objects");
 }

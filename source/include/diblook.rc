@@ -160,6 +160,10 @@ BEGIN
         BEGIN
             MENUITEM "Binary Objects Information",  ID_LABORATOR4BINARYOBJECTSINFORMATION
         END
+        POPUP "Laborator5"
+        BEGIN
+            MENUITEM "Mark Objects",                ID_LABORATOR5_MARKOBJECTS
+        END
     END
 END
 
