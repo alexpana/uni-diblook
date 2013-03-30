@@ -162,6 +162,10 @@ BEGIN
             MENUITEM "Projection X",                ID_LABORATOR4_PX
             MENUITEM "Projection Y",                ID_LABORATOR4_PY
         END
+        POPUP "Laborator5"
+        BEGIN
+            MENUITEM "Mark Objects",                ID_LABORATOR5_MARKOBJECTS
+        END
     END
 END
 

@@ -64,6 +64,7 @@ public:
 	afx_msg void OnLaborator4BinaryObjectsInformation();
 	afx_msg void OnLaborator4ProjectionX();
 	afx_msg void OnLaborator4ProjectionY();
+	afx_msg void OnLaborator5MarkObjects();
 };
 
 /////////////////////////////////////////////////////////////////////////////

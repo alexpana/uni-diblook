@@ -45,13 +45,15 @@
 #define ID_LABORATOR4PY                 32793
 #define ID_LABORATOR4_PX                32794
 #define ID_LABORATOR4_PY                32795
+#define ID_LABORATOR_LABORATOR5         32790
+#define ID_LABORATOR5_MARKOBJECTS       32791
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        107
-#define _APS_NEXT_COMMAND_VALUE         32796
+#define _APS_NEXT_COMMAND_VALUE         32792
 #define _APS_NEXT_CONTROL_VALUE         112
 #define _APS_NEXT_SYMED_VALUE           102
 #endif
