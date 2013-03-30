@@ -128,6 +128,8 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR3_REDUCE, &CDibView::OnLaborator3Reduce)
 	ON_COMMAND(ID_LABORATOR3_DITHER, &CDibView::OnLaborator3Dither)
 	ON_COMMAND(ID_LABORATOR4_BINARYOBJECTSINFORMATION, &CDibView::OnLaborator4BinaryObjectsInformation)
+	ON_COMMAND(ID_LABORATOR4_PX, &CDibView::OnLaborator4ProjectionX)
+	ON_COMMAND(ID_LABORATOR4_PY, &CDibView::OnLaborator4ProjectionY)
 
 	ON_WM_LBUTTONDBLCLK()
 
@@ -145,16 +147,23 @@ CDibView::~CDibView()
 {
 }
 
-#define II( argx, argy ) ( obColor == lpSrc[(argx) * w + (argy)] ? 1 : 0 )
+static int SELECTED_COLOR;
+static BinaryObject SELECTED_OBJECT;
+
+#define II( argx, argy ) ( SELECTED_COLOR == lpSrc[(argx) * w + (argy)] ? 1 : 0 )
 
 void CDibView::OnLButtonDblClk( UINT nFlags, CPoint point )
 {
 	BEGIN_SOURCE_PROCESSING;
-	int x = point.x;
-	int y = dwHeight - point.y - 1;
-	int obColor = lpSrc[y * w + x];
 
-	BinaryObject ob;
+	CPoint pos = point + GetScrollPosition();
+
+	int x = pos.x;
+	int y = dwHeight - pos.y - 1;
+	SELECTED_COLOR = lpSrc[y * w + x];
+
+	BinaryObject* pbo = new BinaryObject();
+	BinaryObject ob = *pbo;
 
 	// Area
 	// -----------------------------------------------------------------
@@ -176,7 +185,7 @@ void CDibView::OnLButtonDblClk( UINT nFlags, CPoint point )
 
 			for( int i = max( r - 1, 0 ); i < min( r+2, dwHeight - 1 ); ++i ){
 				for( int j = max( c - 1, 0 ); j < min( c+2, dwWidth - 1 ); ++j )
-					if( lpSrc[ i * w + j ] != obColor )
+					if( lpSrc[ i * w + j ] != SELECTED_COLOR )
 						isEdgePixel = true;
 			}
 
@@ -258,7 +267,9 @@ void CDibView::OnLButtonDblClk( UINT nFlags, CPoint point )
 		}
 	}
 
-	ob.elongationAxis = atan2( A, (B-C) );
+	ob.elongationAxis = atan2( A, (B-C) ) / 2.0f; // * 180.0f / (2.0f * 3.1416f);
+
+	SELECTED_OBJECT = ob;
 
 	// =================================================================
 	//	Display the results
@@ -695,7 +706,7 @@ void CDibView::OnLaborator3Histograma()
 
 	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
 	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
-		histogram = getHistogram( lpSrc, dwWidth, dwHeight );
+		histogram = getHistogram( lpSrc, w, dwHeight );
 	} else {
 		return;
 	}
@@ -719,8 +730,8 @@ int getNearestHistogramValue( int oldValue, const std::vector<int>& table ){
 }
 
 vector<int> getReducedHistogram( CHistogram& hist ){
-	static int WH = 7;
-	static float TH = 0.001f;
+	static int WH = 5;
+	static float TH = 0.0005f;
 
 	std::vector<int> values;
 	values.push_back(0);
@@ -761,9 +772,17 @@ void CDibView::OnLaborator3Reduce()
 	END_PROCESSING("Reduce Colors")
 }
 
+
+
 void CDibView::OnLaborator4BinaryObjectsInformation()
 {
 	BEGIN_PROCESSING();
+
+	BinaryObject ob = SELECTED_OBJECT;
+
+	// =================================================================
+	// Draw the elongation axis
+	// =================================================================
 
 	CDC dc;
 	dc.CreateCompatibleDC(0);
@@ -772,22 +791,138 @@ void CDibView::OnLaborator4BinaryObjectsInformation()
 
 	bitmap.Attach(hBitmap);
 
+	CBitmap* pTempBmp = dc.SelectObject( &bitmap );
+	CPen pen( PS_SOLID, 1, RGB(0, 255, 0 ) );
 
-	END_PROCESSING("Binary Objects");
+	CPen* pTempPen = dc.SelectObject(&pen);
+
+	int ox = ob.centerOfMass.x;
+	int oy = dwHeight - ob.centerOfMass.y + 1;
+
+	dc.MoveTo( ox, oy );
+	dc.LineTo( 
+		ox - cos( ob.elongationAxis ) * 200, 
+		oy + sin( ob.elongationAxis ) * 200
+		);
+	dc.MoveTo( ox, oy );
+	dc.LineTo( 
+		ox + cos( ob.elongationAxis ) * 200, 
+		oy - sin( ob.elongationAxis ) * 200
+		);
+
+	dc.SelectObject( pTempPen );
+	dc.SelectObject( pTempBmp );
+
+	GetDIBits( dc.m_hDC, bitmap, 0, dwHeight, lpDst, (LPBITMAPINFO) lpD,
+		DIB_RGB_COLORS );
+
+	END_PROCESSING("Elongation Axis");
+}
+
+
+void CDibView::OnLaborator4ProjectionX()
+{
+	BEGIN_PROCESSING()
+	BinaryObject ob = SELECTED_OBJECT;
+
+	// =================================================================
+	// Draw the elongation axis
+	// =================================================================
+
+	CDC dc;
+	dc.CreateCompatibleDC(0);
+	CBitmap bitmap;
+	HBITMAP hBitmap = CreateDIBitmap( ::GetDC(0), &((LPBITMAPINFO)lpS)->bmiHeader, CBM_INIT, lpSrc, (LPBITMAPINFO)lpS, DIB_RGB_COLORS );
+
+	bitmap.Attach(hBitmap);
+
+	CBitmap* pTempBmp = dc.SelectObject( &bitmap );
+	CPen pen( PS_SOLID, 1, RGB(0, 0, 0 ) );
+
+	CPen* pTempPen = dc.SelectObject(&pen);
+
+	int ox = ob.centerOfMass.x;
+	int oy = dwHeight - ob.centerOfMass.y + 1;
+
+	dc.Rectangle(0, 0, dwWidth, dwHeight);
+
+	for( int i = 0; i < ob.projectionsXSize; ++i ){
+		dc.MoveTo( i, 0 );
+		dc.LineTo( i, ob.projectionsX[i] );
+
+	}
+
+	dc.SelectObject( pTempPen );
+	dc.SelectObject( pTempBmp );
+
+	GetDIBits( dc.m_hDC, bitmap, 0, dwHeight, lpDst, (LPBITMAPINFO) lpD,
+		DIB_RGB_COLORS );
+
+	END_PROCESSING("Projection X");
+}
+
+void CDibView::OnLaborator4ProjectionY()
+{
+	BEGIN_PROCESSING()
+
+	BinaryObject ob = SELECTED_OBJECT;
+
+	// =================================================================
+	// Draw the elongation axis
+	// =================================================================
+
+	CDC dc;
+	dc.CreateCompatibleDC(0);
+	CBitmap bitmap;
+	HBITMAP hBitmap = CreateDIBitmap( ::GetDC(0), &((LPBITMAPINFO)lpS)->bmiHeader, CBM_INIT, lpSrc, (LPBITMAPINFO)lpS, DIB_RGB_COLORS );
+
+	bitmap.Attach(hBitmap);
+
+	CBitmap* pTempBmp = dc.SelectObject( &bitmap );
+	CPen pen( PS_SOLID, 1, RGB(0, 0, 0 ) );
+
+	CPen* pTempPen = dc.SelectObject(&pen);
+
+	int ox = ob.centerOfMass.x;
+	int oy = dwHeight - ob.centerOfMass.y + 1;
+
+	dc.Rectangle(0, 0, dwWidth, dwHeight);
+
+	for( int i = 0; i < ob.projectionsYSize; ++i ){
+		dc.MoveTo( 0, i );
+		dc.LineTo( ob.projectionsY[i], i );
+
+	}
+
+	dc.SelectObject( pTempPen );
+	dc.SelectObject( pTempBmp );
+
+	GetDIBits( dc.m_hDC, bitmap, 0, dwHeight, lpDst, (LPBITMAPINFO) lpD,
+		DIB_RGB_COLORS );
+
+	END_PROCESSING("Projection Y");
 }
 
 void CDibView::OnLaborator3Dither()
 {
 	BEGIN_PROCESSING()
+
+	CHistogram hist = *getHistogram(lpSrc, dwWidth, dwHeight );
+	vector<int> values = getReducedHistogram( hist );
+
+	for( int i = 0; i < dwHeight; ++i ){
+		for( int  j = 0; j < dwWidth; ++j ){
+			BYTE color = getPixelColor( lpSrc, w, i, j, 8 );
+			setPixelColor( lpDst, w, i, j, getNearestHistogramValue( color, values ), 8 );
+		}
+	}
+
 	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
 
 	if( pBitmapInfoSrc->bmiHeader.biBitCount != 8 ){
 		// display a message
 		return;
 	}
-
-	CHistogram* hist = getHistogram(lpSrc, dwWidth, dwHeight );
-	vector<int> values = getReducedHistogram( *hist );
 
 	for( int i = 0; i < dwHeight; ++i ){
 		for( int  j = 0; j < dwWidth; ++j ){
@@ -803,6 +938,8 @@ void CDibView::OnLaborator3Dither()
 			BYTE new_color = getNearestHistogramValue( old_color, values );
 			setPixelColor(lpDst, w, y, x, new_color, 8 );
 			error = (float)(old_color - new_color);
+			error = min( error, 255.0f );
+			error = max( error, 0.0f );
 			BYTE color;
 
 			if( x < dwWidth-1 ){

@@ -1,5 +1,6 @@
 # Project files
 build/vc2008
+build/vc2010
 binaries/
 
 # Compiled Object files
