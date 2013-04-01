@@ -10,6 +10,7 @@
 // See these sources for detailed information regarding the
 // Microsoft Foundation Classes product.
 
+// Diblook Headers
 #include "stdafx.h"
 #include "diblook.h"
 
@@ -18,22 +19,25 @@
 #include "dibapi.h"
 #include "mainfrm.h"
 
+// Windows Headers
 #include "HRTimer.h"
-
-#include <math.h>
-
 #include "BitmapInfoDlg.h"
 #include "ThresholdDlg.h"
 
+// Personal Headers
 #include "Histogram.h"
 #include "HistogramDlg.h"
 #include "Image.h"
 
 #include "BinaryObject.h"
+#include "Contour.h"
 
+// STD Headers
+#include <math.h>
 #include <vector>
 #include <ctime>
 #include <cstdlib>
+#include <fstream>
 
 using namespace std;
 
@@ -139,6 +143,8 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR3_DITHER, &CDibView::OnLaborator3Dither)
 	ON_COMMAND(ID_LABORATOR4_BINARYOBJECTSINFORMATION, &CDibView::OnLaborator4BinaryObjectsInformation)
 	ON_COMMAND(ID_LABORATOR5_MARKOBJECTS, &CDibView::OnLaborator5MarkObjects)
+	ON_COMMAND(ID_LABORATOR6_DRAWCONTOUR, &CDibView::OnLaborator6DrawExternalContour)
+	ON_COMMAND(ID_LABORATOR6_DRAWCONTOUR2, &CDibView::OnLaborator6DrawImageContour)
 
 	ON_WM_LBUTTONDBLCLK()
 
@@ -871,7 +877,7 @@ void MarkObjects( const Image& src, Image& dst ){
 	for( int i = 0; i < 256; ++i ){
 		labelTree[i] = i;
 	}
-	
+
 	for( int i = src.GetHeight() - 2; i >= 0; --i ){
 		for( int j = 1; j < src.GetWidth() - 1; ++j ){
 
@@ -933,24 +939,84 @@ void MarkObjects( const Image& src, Image& dst ){
 				pixelLabels[i * w + j] = X_Label;
 			}
 		}
+	}
 
-		for( int i = 0; i < src.GetHeight(); ++i ){
-			for( int j = 0; j < src.GetWidth(); ++j ){
-				int index = i * w + j;
-				int value = Parent( pixelLabels[i * w + j], labelTree );
-				if( src.GetLutIndex( i, j ) == 0 ){
-					dst.SetPixelLUTIndex( i, j, value );
-				}
+	for( int i = 0; i < src.GetHeight(); ++i ){
+		for( int j = 0; j < src.GetWidth(); ++j ){
+			int index = i * w + j;
+			int value = Parent( pixelLabels[i * w + j], labelTree );
+			bool cond = src.GetLutIndex( i, j ) == 0;
+			if( cond ){
+				dst.SetPixelLUTIndex( i, j, value );
 			}
 		}
+	}
 
-		// Add some pretty colors to the destination LUT
-		srand (time(NULL));
-		for( int i = 1; i < 254; ++i ){
-			Color c( rand() % 255, rand() % 255, rand() % 255 );
-			dst.SetLUTColor( i, c );
+	// Add some pretty colors to the destination LUT
+	srand (time(NULL));
+	for( int i = 1; i < 254; ++i ){
+		Color c( rand() % 255, rand() % 255, rand() % 255 );
+		dst.SetLUTColor( i, c );
+	}
+}
+
+void DrawContour( Image& img, Contour& contour, int colorLutIndex = 0 ){
+	Vector2 p;
+	while( contour.HasNext() ){
+		p = contour.NextPosition();
+		img.SetPixelLUTIndex(p.y, p.x, colorLutIndex);
+	}
+}
+
+Contour ReadContour( string filename ){
+	Contour c;
+	ifstream fin( filename );
+	int x, y, n, d;
+
+	fin >> x >> y;
+	c.SetStartPosition( Vector2( x, y ) );
+
+	fin >> n;
+
+	for( int i = 0; i < n; ++i ){
+		fin >> d;
+		c.AddDirection( d );
+	}
+
+	return c;
+}
+
+Contour ConstructContour( const Image& img ){
+	Contour c;
+
+	// Find the starting pixel
+	int startx = -1, starty = -1;
+	for( int x = 0; x < img.GetHeight() && startx == -1; ++x ){
+		for( int y = 0; y < img.GetWidth() && starty == -1; ++y ){
+			if( img.GetLutIndex(x, y) == 0 ){
+				startx = x;
+				starty = y;
+			}
 		}
 	}
+
+	c.SetStartPosition( Vector2( startx, starty ) );
+
+	int count = 0, direction = 7;
+	int cx = startx, cy = starty;
+	while( cx != startx || cy != starty || count == 0 ){
+		for( int i = 7; i >= 0; --i ){
+			if( img.GetLutIndex( cx + c.GetDelta(i).x, cy + c.GetDelta(i).y ) == 0 ){
+				c.AddDirection( i );
+				break;
+			}
+			cx += c.GetDelta(i).x;
+			cy += c.GetDelta(i).y;
+		}
+		++count;
+	}
+
+	return c;
 }
 
 void CDibView::OnLaborator5MarkObjects(){
@@ -962,4 +1028,31 @@ void CDibView::OnLaborator5MarkObjects(){
 	MarkObjects( imgSrc, imgDst );
 
 	END_PROCESSING("Mark Objects");
+}
+
+void CDibView::OnLaborator6DrawExternalContour(){
+	BEGIN_SOURCE_PROCESSING;
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	// Open File
+	string filename = "c:/Users/Alex/Dropbox/Universitate/Anul3/Sem_2_Procesare_Imagini/Imagini/border_tracing/reconstruct.txt";
+
+	Contour contour = ReadContour( filename );
+
+	DrawContour( imgSrc, contour );
+
+	END_SOURCE_PROCESSING;
+}
+
+void CDibView::OnLaborator6DrawImageContour(){
+	BEGIN_PROCESSING();
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	Contour c = ConstructContour( imgSrc );
+	imgDst.Clear();
+	DrawContour( imgDst, c );
+
+	END_PROCESSING("Trace Contour");
 }

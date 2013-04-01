@@ -164,6 +164,11 @@ BEGIN
         BEGIN
             MENUITEM "Mark Objects",                ID_LABORATOR5_MARKOBJECTS
         END
+        POPUP "Laborator6"
+        BEGIN
+            MENUITEM "Draw External Contour",       ID_LABORATOR6_DRAWCONTOUR
+            MENUITEM "Draw Image Contour",          ID_LABORATOR6_DRAWCONTOUR2
+        END
     END
 END
 

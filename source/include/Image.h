@@ -44,6 +44,8 @@ public:
 
 	int GetLutIndex( const int x, const int y ) const;
 
+	void Clear();
+
 private:
 	int bpp, width, height, lutSize;
 	RGBQUAD* lut;
