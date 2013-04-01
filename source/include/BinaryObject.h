@@ -27,8 +27,8 @@ public:
 	}
 
 	~BinaryObject(){
-		delete[] projectionsX;
-		delete[] projectionsY;
+		//delete[] projectionsX;
+		//delete[] projectionsY;
 	}
 
 	CString toCString(){
@@ -41,7 +41,7 @@ public:
 			centerOfMass.y,
 			thinnessRatio,
 			aspectRatio,
-			elongationAxis
+			elongationAxis * 180.0f / 3.1416f
 		);
 		return result;
 	}
