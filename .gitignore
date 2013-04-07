@@ -1,6 +1,10 @@
 # Project files
 build/vc2008
+build/vc2010
 binaries/
+
+# Conflict files
+*.orig
 
 # Compiled Object files
 *.slo
