@@ -168,9 +168,9 @@ BEGIN
         END
         POPUP "Laborator6"
         BEGIN
-            MENUITEM "Draw Image Contour",          ID_LABORATOR6_DRAWCONTOUR2
+            MENUITEM "Draw Image Contour",          ID_LABORATOR6_DRAWCONTOUR
             MENUITEM "Export Contour",              ID_LABORATOR6_EXPORTCONTOUR
-            MENUITEM "Draw Contour from Index",     ID_LABORATOR6_DRAWCONTOUR
+            MENUITEM "Draw Contour from Index",     ID_LABORATOR6_DRAWCONTOURFROMINDEX
             MENUITEM "Draw Contour from Derivative", ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE
         END
     END
