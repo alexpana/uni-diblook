@@ -55,3 +55,12 @@ int Image::GetLutIndex( const int x, const int y ) const {
 		return -1;
 	}
 }
+
+void Image::Clear()
+{
+	for( int i = 0; i < GetHeight(); ++i ){
+		for( int j = 0; j < GetWidth(); ++j ){
+			SetPixelLUTIndex( i, j, 255 );
+		}
+	}
+}

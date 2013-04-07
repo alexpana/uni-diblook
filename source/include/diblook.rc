@@ -158,13 +158,18 @@ BEGIN
         END
         POPUP "Laborator4"
         BEGIN
-            MENUITEM "Binary Objects Information",  ID_LABORATOR4_BINARYOBJECTSINFORMATION
-            MENUITEM "Projection X",                ID_LABORATOR4_PX
-            MENUITEM "Projection Y",                ID_LABORATOR4_PY
+            MENUITEM "Binary Objects Information",  ID_LABORATOR4BINARYOBJECTSINFORMATION
         END
         POPUP "Laborator5"
         BEGIN
             MENUITEM "Mark Objects",                ID_LABORATOR5_MARKOBJECTS
+        END
+        POPUP "Laborator6"
+        BEGIN
+            MENUITEM "Draw Image Contour",          ID_LABORATOR6_DRAWCONTOUR2
+            MENUITEM "Export Contour",              ID_LABORATOR6_EXPORTCONTOUR
+            MENUITEM "Draw Contour from Index",     ID_LABORATOR6_DRAWCONTOUR
+            MENUITEM "Draw Contour from Derivative", ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE
         END
     END
 END

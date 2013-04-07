@@ -10,30 +10,32 @@
 // See these sources for detailed information regarding the
 // Microsoft Foundation Classes product.
 
+// Diblook Headers
 #include "stdafx.h"
 #include "diblook.h"
-
 #include "dibdoc.h"
 #include "dibview.h"
 #include "dibapi.h"
 #include "mainfrm.h"
 
+// Windows Headers
 #include "HRTimer.h"
-
-#include <math.h>
-
 #include "BitmapInfoDlg.h"
 #include "ThresholdDlg.h"
 
+// Personal Headers
 #include "Histogram.h"
 #include "HistogramDlg.h"
 #include "Image.h"
-
 #include "BinaryObject.h"
+#include "Contour.h"
 
+// STD Headers
+#include <math.h>
 #include <vector>
 #include <ctime>
 #include <cstdlib>
+#include <fstream>
 
 using namespace std;
 
@@ -138,9 +140,11 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR3_REDUCE, &CDibView::OnLaborator3Reduce)
 	ON_COMMAND(ID_LABORATOR3_DITHER, &CDibView::OnLaborator3Dither)
 	ON_COMMAND(ID_LABORATOR4_BINARYOBJECTSINFORMATION, &CDibView::OnLaborator4BinaryObjectsInformation)
-	ON_COMMAND(ID_LABORATOR4_PX, &CDibView::OnLaborator4ProjectionX)
-	ON_COMMAND(ID_LABORATOR4_PY, &CDibView::OnLaborator4ProjectionY)
 	ON_COMMAND(ID_LABORATOR5_MARKOBJECTS, &CDibView::OnLaborator5MarkObjects)
+	ON_COMMAND(ID_LABORATOR6_DRAWCONTOUR, &CDibView::OnLaborator6DrawContourFromExternalDirections)
+	ON_COMMAND(ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE, &CDibView::OnLaborator6DrawContourFromExternalDerivative)
+	ON_COMMAND(ID_LABORATOR6_DRAWCONTOUR2, &CDibView::OnLaborator6DrawImageContour)
+	ON_COMMAND(ID_LABORATOR6_EXPORTCONTOUR, &CDibView::OnLaborator6ExportContour)
 
 	ON_WM_LBUTTONDBLCLK()
 
@@ -158,23 +162,16 @@ CDibView::~CDibView()
 {
 }
 
-static int SELECTED_COLOR;
-static BinaryObject SELECTED_OBJECT;
-
-#define II( argx, argy ) ( SELECTED_COLOR == lpSrc[(argx) * w + (argy)] ? 1 : 0 )
+#define II( argx, argy ) ( obColor == lpSrc[(argx) * w + (argy)] ? 1 : 0 )
 
 void CDibView::OnLButtonDblClk( UINT nFlags, CPoint point )
 {
 	BEGIN_SOURCE_PROCESSING;
+	int x = point.x;
+	int y = dwHeight - point.y - 1;
+	int obColor = lpSrc[y * w + x];
 
-	CPoint pos = point + GetScrollPosition();
-
-	int x = pos.x;
-	int y = dwHeight - pos.y - 1;
-	SELECTED_COLOR = lpSrc[y * w + x];
-
-	BinaryObject* pbo = new BinaryObject();
-	BinaryObject ob = *pbo;
+	BinaryObject ob;
 
 	// Area
 	// -----------------------------------------------------------------
@@ -196,7 +193,7 @@ void CDibView::OnLButtonDblClk( UINT nFlags, CPoint point )
 
 			for( int i = max( r - 1, 0 ); i < min( r+2, dwHeight - 1 ); ++i ){
 				for( int j = max( c - 1, 0 ); j < min( c+2, dwWidth - 1 ); ++j )
-					if( lpSrc[ i * w + j ] != SELECTED_COLOR )
+					if( lpSrc[ i * w + j ] != obColor )
 						isEdgePixel = true;
 			}
 
@@ -278,9 +275,7 @@ void CDibView::OnLButtonDblClk( UINT nFlags, CPoint point )
 		}
 	}
 
-	ob.elongationAxis = atan2( A, (B-C) ) / 2.0f; // * 180.0f / (2.0f * 3.1416f);
-
-	SELECTED_OBJECT = ob;
+	ob.elongationAxis = atan2( A, (B-C) );
 
 	// =================================================================
 	//	Display the results
@@ -717,7 +712,7 @@ void CDibView::OnLaborator3Histograma()
 
 	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
 	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
-		histogram = getHistogram( lpSrc, w, dwHeight );
+		histogram = getHistogram( lpSrc, dwWidth, dwHeight );
 	} else {
 		return;
 	}
@@ -741,8 +736,8 @@ int getNearestHistogramValue( int oldValue, const std::vector<int>& table ){
 }
 
 vector<int> getReducedHistogram( CHistogram& hist ){
-	static int WH = 5;
-	static float TH = 0.0005f;
+	static int WH = 7;
+	static float TH = 0.001f;
 
 	std::vector<int> values;
 	values.push_back(0);
@@ -783,18 +778,10 @@ void CDibView::OnLaborator3Reduce()
 	END_PROCESSING("Reduce Colors")
 }
 
-
-
 void CDibView::OnLaborator4BinaryObjectsInformation()
 {
 	BEGIN_PROCESSING();
 
-	BinaryObject ob = SELECTED_OBJECT;
-
-	// =================================================================
-	// Draw the elongation axis
-	// =================================================================
-
 	CDC dc;
 	dc.CreateCompatibleDC(0);
 	CBitmap bitmap;
@@ -802,138 +789,22 @@ void CDibView::OnLaborator4BinaryObjectsInformation()
 
 	bitmap.Attach(hBitmap);
 
-	CBitmap* pTempBmp = dc.SelectObject( &bitmap );
-	CPen pen( PS_SOLID, 1, RGB(0, 255, 0 ) );
 
-	CPen* pTempPen = dc.SelectObject(&pen);
-
-	int ox = ob.centerOfMass.x;
-	int oy = dwHeight - ob.centerOfMass.y + 1;
-
-	dc.MoveTo( ox, oy );
-	dc.LineTo( 
-		ox - cos( ob.elongationAxis ) * 200, 
-		oy + sin( ob.elongationAxis ) * 200
-		);
-	dc.MoveTo( ox, oy );
-	dc.LineTo( 
-		ox + cos( ob.elongationAxis ) * 200, 
-		oy - sin( ob.elongationAxis ) * 200
-		);
-
-	dc.SelectObject( pTempPen );
-	dc.SelectObject( pTempBmp );
-
-	GetDIBits( dc.m_hDC, bitmap, 0, dwHeight, lpDst, (LPBITMAPINFO) lpD,
-		DIB_RGB_COLORS );
-
-	END_PROCESSING("Elongation Axis");
-}
-
-
-void CDibView::OnLaborator4ProjectionX()
-{
-	BEGIN_PROCESSING()
-	BinaryObject ob = SELECTED_OBJECT;
-
-	// =================================================================
-	// Draw the elongation axis
-	// =================================================================
-
-	CDC dc;
-	dc.CreateCompatibleDC(0);
-	CBitmap bitmap;
-	HBITMAP hBitmap = CreateDIBitmap( ::GetDC(0), &((LPBITMAPINFO)lpS)->bmiHeader, CBM_INIT, lpSrc, (LPBITMAPINFO)lpS, DIB_RGB_COLORS );
-
-	bitmap.Attach(hBitmap);
-
-	CBitmap* pTempBmp = dc.SelectObject( &bitmap );
-	CPen pen( PS_SOLID, 1, RGB(0, 0, 0 ) );
-
-	CPen* pTempPen = dc.SelectObject(&pen);
-
-	int ox = ob.centerOfMass.x;
-	int oy = dwHeight - ob.centerOfMass.y + 1;
-
-	dc.Rectangle(0, 0, dwWidth, dwHeight);
-
-	for( int i = 0; i < ob.projectionsXSize; ++i ){
-		dc.MoveTo( i, 0 );
-		dc.LineTo( i, ob.projectionsX[i] );
-
-	}
-
-	dc.SelectObject( pTempPen );
-	dc.SelectObject( pTempBmp );
-
-	GetDIBits( dc.m_hDC, bitmap, 0, dwHeight, lpDst, (LPBITMAPINFO) lpD,
-		DIB_RGB_COLORS );
-
-	END_PROCESSING("Projection X");
-}
-
-void CDibView::OnLaborator4ProjectionY()
-{
-	BEGIN_PROCESSING()
-
-	BinaryObject ob = SELECTED_OBJECT;
-
-	// =================================================================
-	// Draw the elongation axis
-	// =================================================================
-
-	CDC dc;
-	dc.CreateCompatibleDC(0);
-	CBitmap bitmap;
-	HBITMAP hBitmap = CreateDIBitmap( ::GetDC(0), &((LPBITMAPINFO)lpS)->bmiHeader, CBM_INIT, lpSrc, (LPBITMAPINFO)lpS, DIB_RGB_COLORS );
-
-	bitmap.Attach(hBitmap);
-
-	CBitmap* pTempBmp = dc.SelectObject( &bitmap );
-	CPen pen( PS_SOLID, 1, RGB(0, 0, 0 ) );
-
-	CPen* pTempPen = dc.SelectObject(&pen);
-
-	int ox = ob.centerOfMass.x;
-	int oy = dwHeight - ob.centerOfMass.y + 1;
-
-	dc.Rectangle(0, 0, dwWidth, dwHeight);
-
-	for( int i = 0; i < ob.projectionsYSize; ++i ){
-		dc.MoveTo( 0, i );
-		dc.LineTo( ob.projectionsY[i], i );
-
-	}
-
-	dc.SelectObject( pTempPen );
-	dc.SelectObject( pTempBmp );
-
-	GetDIBits( dc.m_hDC, bitmap, 0, dwHeight, lpDst, (LPBITMAPINFO) lpD,
-		DIB_RGB_COLORS );
-
-	END_PROCESSING("Projection Y");
+	END_PROCESSING("Binary Objects");
 }
 
 void CDibView::OnLaborator3Dither()
 {
 	BEGIN_PROCESSING()
-
-	CHistogram hist = *getHistogram(lpSrc, dwWidth, dwHeight );
-	vector<int> values = getReducedHistogram( hist );
-
-	for( int i = 0; i < dwHeight; ++i ){
-		for( int  j = 0; j < dwWidth; ++j ){
-			BYTE color = getPixelColor( lpSrc, w, i, j, 8 );
-			setPixelColor( lpDst, w, i, j, getNearestHistogramValue( color, values ), 8 );
-		}
-	}
-
 	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
 
 	if( pBitmapInfoSrc->bmiHeader.biBitCount != 8 ){
 		// display a message
 		return;
 	}
+
+	CHistogram* hist = getHistogram(lpSrc, dwWidth, dwHeight );
+	vector<int> values = getReducedHistogram( *hist );
 
 	for( int i = 0; i < dwHeight; ++i ){
 		for( int  j = 0; j < dwWidth; ++j ){
@@ -949,8 +820,6 @@ void CDibView::OnLaborator3Dither()
 			BYTE new_color = getNearestHistogramValue( old_color, values );
 			setPixelColor(lpDst, w, y, x, new_color, 8 );
 			error = (float)(old_color - new_color);
-			error = min( error, 255.0f );
-			error = max( error, 0.0f );
 			BYTE color;
 
 			if( x < dwWidth-1 ){
@@ -985,6 +854,15 @@ int Parent( int a, int* parent ){
 	while( parent[p] != p ){
 		p = parent[p];
 	}
+
+	// compact
+	/*
+	while( parent[a] != a ){
+		a = parent[a];
+		parent[a] = p;
+	}
+	*/
+
 	return p;
 }
 
@@ -1008,7 +886,7 @@ void MarkObjects( const Image& src, Image& dst ){
 	for( int i = 0; i < 256; ++i ){
 		labelTree[i] = i;
 	}
-	
+
 	for( int i = src.GetHeight() - 2; i >= 0; --i ){
 		for( int j = 1; j < src.GetWidth() - 1; ++j ){
 
@@ -1070,24 +948,118 @@ void MarkObjects( const Image& src, Image& dst ){
 				pixelLabels[i * w + j] = X_Label;
 			}
 		}
+	}
 
-		for( int i = 0; i < src.GetHeight(); ++i ){
-			for( int j = 0; j < src.GetWidth(); ++j ){
-				int index = i * w + j;
-				int value = Parent( pixelLabels[i * w + j], labelTree );
-				if( src.GetLutIndex( i, j ) == 0 ){
-					dst.SetPixelLUTIndex( i, j, value );
-				}
+	for( int i = 0; i < src.GetHeight(); ++i ){
+		for( int j = 0; j < src.GetWidth(); ++j ){
+			int index = i * w + j;
+			int value = Parent( pixelLabels[i * w + j], labelTree );
+			bool cond = src.GetLutIndex( i, j ) == 0;
+			if( cond ){
+				dst.SetPixelLUTIndex( i, j, value );
 			}
 		}
+	}
 
-		// Add some pretty colors to the destination LUT
-		srand (time(NULL));
-		for( int i = 1; i < 254; ++i ){
-			Color c( rand() % 255, rand() % 255, rand() % 255 );
-			dst.SetLUTColor( i, c );
+	// Add some pretty colors to the destination LUT
+	srand (time(NULL));
+	for( int i = 1; i < 254; ++i ){
+		Color c( rand() % 255, rand() % 255, rand() % 255 );
+		dst.SetLUTColor( i, c );
+	}
+}
+
+void DrawContour( Image& img, Contour& contour, int colorLutIndex = 0 ){
+	Vector2 p;
+	while( contour.HasNext() ){
+		p = contour.NextPosition();
+		img.SetPixelLUTIndex(p.y, p.x, colorLutIndex);
+	}
+}
+
+Contour ReadContour( string filename ){
+	Contour c;
+	ifstream fin( filename );
+	int x, y, n, d;
+
+	fin >> x >> y;
+	c.SetStartPosition( Vector2( x, y ) );
+
+	fin >> n;
+
+	for( int i = 0; i < n; ++i ){
+		fin >> d;
+		c.AddDirection( d );
+	}
+
+	return c;
+}
+
+Contour ReadContourFromDerivative( string filename ){
+	Contour c;
+	ifstream fin( filename );
+	int x, y, n, d, initial;
+
+	fin >> x >> y;
+	c.SetStartPosition( Vector2( x, y ) );
+
+	fin >> n >> initial;
+
+	c.AddDirection( initial );
+
+	for( int i = 0; i < n; ++i ){
+		fin >> d;
+		initial = ( initial + d ) % 8;
+		c.AddDirection( initial );
+	}
+
+	return c;
+}
+
+Contour ConstructContour( const Image& img ){
+	Contour c;
+
+	// Find the starting pixel
+	int startx = -1, starty = -1;
+	for( int x = 0; x < img.GetHeight() && startx == -1; ++x ){
+		for( int y = 0; y < img.GetWidth() && starty == -1; ++y ){
+			if( img.GetLutIndex(x, y) == 0 ){
+				startx = x;
+				starty = y;
+			}
 		}
 	}
+
+	c.SetStartPosition( Vector2( starty, startx ) );
+
+	int count = 0, dir = 7;
+	int cx = startx, cy = starty;
+	while( cx != startx || cy != starty || count == 0 ){
+
+		for( int i = 0; i < 8; ++i ){
+			if( img.GetLutIndex(
+				cx + c.GetDelta( dir ).y,
+				cy + c.GetDelta( dir ).x
+				) == 0 ){
+					break;
+			}
+			dir = (dir + 1) % 8;
+		}
+
+		cx += c.GetDelta(dir).y;
+		cy += c.GetDelta(dir).x;
+		c.AddDirection( (dir) % 8 );
+
+		if( dir % 2 ){
+			dir = (dir + 6) % 8;
+		} else {
+			dir = ( dir + 7 ) % 8;
+		}
+
+		++count;
+	}
+
+	return c;
 }
 
 void CDibView::OnLaborator5MarkObjects(){
@@ -1099,4 +1071,81 @@ void CDibView::OnLaborator5MarkObjects(){
 	MarkObjects( imgSrc, imgDst );
 
 	END_PROCESSING("Mark Objects");
+}
+
+void CDibView::OnLaborator6DrawContourFromExternalDirections(){
+	BEGIN_SOURCE_PROCESSING;
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	// Open File
+	//string filename = "c:/Users/Alex/Dropbox/Universitate/Anul3/Sem_2_Procesare_Imagini/Imagini/border_tracing/reconstruct.txt";
+	string filename = "c:/Users/Alex/Dropbox/Universitate/Anul3/Sem_2_Procesare_Imagini/Imagini/border_tracing/contour.txt";
+
+	Contour contour = ReadContour( filename );
+
+	DrawContour( imgSrc, contour );
+
+	END_SOURCE_PROCESSING;
+}
+
+void CDibView::OnLaborator6DrawImageContour(){
+	BEGIN_PROCESSING();
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	Contour c = ConstructContour( imgSrc );
+	imgDst.Clear();
+	imgDst.SetPixelLUTIndex( c.startPosition.x, c.startPosition.y, 0 );
+	DrawContour( imgDst, c );
+
+	END_PROCESSING("Trace Contour");
+}
+
+void WriteContourDirections( const Contour& c, string filename ){
+	ofstream fout( filename );
+	fout << c.startPosition.x << " " << c.startPosition.y << endl;
+	fout << c.directions.size() << endl;
+	for( int i = 0; i < c.directions.size(); ++i ){
+		fout << c.directions[i] << " ";
+	}
+	fout.close();
+}
+
+void WriteContourDerivative( const Contour& c, string filename ){
+	ofstream fout( filename );
+	vector< int > derivative = c.Derivative();
+	fout << c.startPosition.x << " " << c.startPosition.y << endl;
+	fout << derivative.size() << " " << c.directions[0] << endl;
+	for( int i = 0; i < derivative.size(); ++i ){
+		fout << derivative[i] << " ";
+	}
+	fout.close();
+}
+
+void CDibView::OnLaborator6ExportContour()
+{
+	BEGIN_SOURCE_PROCESSING;
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	Contour c= ConstructContour( imgSrc );
+	WriteContourDirections( c, "contour.txt" );
+	WriteContourDerivative( c, "derivative.txt" );
+
+	END_SOURCE_PROCESSING;
+}
+
+void CDibView::OnLaborator6DrawContourFromExternalDerivative()
+{
+	BEGIN_SOURCE_PROCESSING;
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+
+	string filename = "c:/Users/Alex/Dropbox/Universitate/Anul3/Sem_2_Procesare_Imagini/Imagini/border_tracing/derivative.txt";
+
+	Contour contour = ReadContourFromDerivative( filename );
+
+	DrawContour( imgSrc, contour );
+
+	END_SOURCE_PROCESSING;
 }
