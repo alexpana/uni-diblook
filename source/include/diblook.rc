@@ -158,7 +158,9 @@ BEGIN
         END
         POPUP "Laborator4"
         BEGIN
-            MENUITEM "Binary Objects Information",  ID_LABORATOR4BINARYOBJECTSINFORMATION
+            MENUITEM "Binary Objects Information",  ID_LABORATOR4_BINARYOBJECTSINFORMATION
+            MENUITEM "Projection X",                ID_LABORATOR4_PX
+            MENUITEM "Projection Y",                ID_LABORATOR4_PY
         END
         POPUP "Laborator5"
         BEGIN

@@ -62,6 +62,8 @@ public:
 	afx_msg void OnLaborator3Dither();
 	afx_msg void OnLaborator3Reduce();
 	afx_msg void OnLaborator4BinaryObjectsInformation();
+	afx_msg void OnLaborator4ProjectionX();
+	afx_msg void OnLaborator4ProjectionY();
 	afx_msg void OnLaborator5MarkObjects();
 	afx_msg void OnLaborator6DrawContourFromExternalDirections();
 	afx_msg void OnLaborator6DrawContourFromExternalDerivative();
