@@ -26,9 +26,11 @@
 // Personal Headers
 #include "Histogram.h"
 #include "HistogramDlg.h"
+#include "DlgSelectMorphologicOperation.h"
 #include "Image.h"
 #include "BinaryObject.h"
 #include "Contour.h"
+#include "Morphologic.h"
 
 // STD Headers
 #include <math.h>
@@ -146,6 +148,7 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR6_DRAWCONTOURFROMINDEX, &CDibView::OnLaborator6DrawContourFromExternalDirections)
 	ON_COMMAND(ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE, &CDibView::OnLaborator6DrawContourFromExternalDerivative)
 	ON_COMMAND(ID_LABORATOR6_EXPORTCONTOUR, &CDibView::OnLaborator6ExportContour)
+	ON_COMMAND(ID_LABORATOR_LABORATOR7, &CDibView::OnLaborator7)
 
 	ON_WM_LBUTTONDBLCLK()
 
@@ -963,7 +966,7 @@ void MarkObjects( const Image& src, Image& dst ){
 	}
 
 	// Add some pretty colors to the destination LUT
-	srand (time(NULL));
+	srand ( (unsigned int) time(NULL));
 	for( int i = 1; i < 254; ++i ){
 		Color c( rand() % 255, rand() % 255, rand() % 255 );
 		dst.SetLUTColor( i, c );
@@ -1091,7 +1094,6 @@ void CDibView::OnLaborator6DrawContourFromExternalDirections(){
 
 void CDibView::OnLaborator6DrawImageContour(){
 	BEGIN_PROCESSING();
-
 	CONSTRUCT_SOURCE_IMAGE( imgSrc );
 	CONSTRUCT_DESTINATION_IMAGE( imgDst );
 
@@ -1107,7 +1109,7 @@ void WriteContourDirections( const Contour& c, string filename ){
 	ofstream fout( filename );
 	fout << c.startPosition.x << " " << c.startPosition.y << endl;
 	fout << c.directions.size() << endl;
-	for( int i = 0; i < c.directions.size(); ++i ){
+	for( unsigned int i = 0; i < c.directions.size(); ++i ){
 		fout << c.directions[i] << " ";
 	}
 	fout.close();
@@ -1118,7 +1120,7 @@ void WriteContourDerivative( const Contour& c, string filename ){
 	vector< int > derivative = c.Derivative();
 	fout << c.startPosition.x << " " << c.startPosition.y << endl;
 	fout << derivative.size() << " " << c.directions[0] << endl;
-	for( int i = 0; i < derivative.size(); ++i ){
+	for( unsigned int i = 0; i < derivative.size(); ++i ){
 		fout << derivative[i] << " ";
 	}
 	fout.close();
@@ -1127,8 +1129,8 @@ void WriteContourDerivative( const Contour& c, string filename ){
 void CDibView::OnLaborator6ExportContour()
 {
 	BEGIN_SOURCE_PROCESSING;
-
 	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+
 	Contour c= ConstructContour( imgSrc );
 	WriteContourDirections( c, "contour.txt" );
 	WriteContourDerivative( c, "derivative.txt" );
@@ -1139,7 +1141,6 @@ void CDibView::OnLaborator6ExportContour()
 void CDibView::OnLaborator6DrawContourFromExternalDerivative()
 {
 	BEGIN_SOURCE_PROCESSING;
-
 	CONSTRUCT_SOURCE_IMAGE( imgSrc );
 
 	string filename = "c:/Users/Alex/Dropbox/Universitate/Anul3/Sem_2_Procesare_Imagini/Imagini/border_tracing/derivative.txt";
@@ -1149,4 +1150,42 @@ void CDibView::OnLaborator6DrawContourFromExternalDerivative()
 	DrawContour( imgSrc, contour );
 
 	END_SOURCE_PROCESSING;
+}
+
+void CDibView::OnLaborator7()
+{
+	DlgSelectMorphologicOperation select;
+	select.m_Count = "1";
+	if( select.DoModal() == IDCANCEL ){
+		return;
+	}
+
+	int count = 1;
+	sscanf( select.m_Count, "%d", &count );
+
+	BEGIN_PROCESSING();
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	Image bufferFrom( imgSrc );
+	Image bufferTo( imgSrc );
+
+	int x = bufferTo.GetWidthInBytes();
+
+	// Dilation; Erosion; Opening; Closing; Contour Extraction; Area Filling
+	switch( select.m_OpType ){
+	case 0:
+		// Dilation
+		for( int i = 0; i < count; ++i ){
+			Morphologic::Dilate( bufferFrom, Morphologic::ElementEightNeighbours, bufferTo );
+			bufferFrom = bufferTo;
+		}
+		imgDst = bufferTo;
+		break;
+	case 1:
+		Morphologic::Erode( imgSrc, Morphologic::ElementEightNeighbours );
+		break;
+	}
+
+	END_PROCESSING( "Morphologic Transformation" );
 }

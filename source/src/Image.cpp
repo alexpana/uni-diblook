@@ -3,6 +3,8 @@
 const Color Color::BLACK = Color( 0 );
 
 void Image::SetPixelLUTIndex( const int x, const int y, const int index ){
+	ASSERT( (x * GetWidth() + y) < GetWidth() * GetHeight() );
+
 	source[ x * GetWidthInBytes() + y ] = index;
 }
 

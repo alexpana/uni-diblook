@@ -35,7 +35,7 @@ public:
 
 	vector<int> Derivative() const {
 		vector<int> result;
-		for( int i = 1; i < directions.size(); ++i ){
+		for( unsigned int i = 1; i < directions.size(); ++i ){
 			result.push_back( (directions[i % directions.size()] - directions[i - 1] + 8) % 8 );
 		}
 		return result;
@@ -51,6 +51,6 @@ public:
 	Vector2 startPosition;
 	Vector2 currentPosition;
 
-	int iterator;
+	unsigned int iterator;
 	std::vector<int> directions;
 };

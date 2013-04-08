@@ -15,4 +15,9 @@
 
 #define VC_EXTRALEAN
 // #define WINVER 0x0600		// Windows Vista
+
+#ifndef _WIN32_WINNT
+	#define _WIN32_WINNT _WIN32_WINNT_MAXVER
+#endif
+
 #include <afxwin.h>         // MFC core and standard components

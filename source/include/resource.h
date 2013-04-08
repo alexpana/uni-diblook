@@ -16,9 +16,12 @@
 #define IDC_STATIC4                     106
 #define IDD_HISTOGRAM                   106
 #define IDC_STATIC5                     107
+#define IDD_DIALOG3                     107
 #define IDC_STATIC6                     108
 #define IDC_STATIC7                     109
 #define IDC_STATIC9                     110
+#define IDC_COMBO1                      112
+#define IDC_EDIT2                       114
 #define ID_PROCESSING_DUPLICATE         32770
 #define ID_PROCESSING_PARCURGERESIMPLA  32771
 #define ID_PROCESSING_MULTIPLETHRESHOLDING 32772
@@ -50,6 +53,7 @@
 #define ID_LABORATOR6_DRAWCONTOUR       32793
 #define ID_LABORATOR4_PX                32794
 #define ID_LABORATOR6_DRAWCONTOUR32794  32794
+#define ID_LABORATOR_LABORATOR7         32794
 #define ID_LABORATOR4_PY                32795
 #define ID_LABORATOR6_DRAWCONTOUR2      32795
 #define ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE 32796
@@ -59,9 +63,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        107
-#define _APS_NEXT_COMMAND_VALUE         32793
-#define _APS_NEXT_CONTROL_VALUE         112
+#define _APS_NEXT_RESOURCE_VALUE        109
+#define _APS_NEXT_COMMAND_VALUE         32795
+#define _APS_NEXT_CONTROL_VALUE         116
 #define _APS_NEXT_SYMED_VALUE           102
 #endif
 #endif

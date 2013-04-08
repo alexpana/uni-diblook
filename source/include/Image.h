@@ -25,9 +25,69 @@ struct Color{
 
 class Image{
 public:
+
 	Image( int bpp, int width, int height, RGBQUAD* lut, int lutSize, BYTE* source ) :
-	  bpp(bpp), height( height ), width( width 	), lutSize( lutSize ), lut( lut ), source( source )
+		sharedData( true ), bpp(bpp), height( height ), width( width ), lutSize( lutSize ), lut( lut ), source( source )
 	{
+	}
+
+	Image( int bpp, int width, int height ) :
+		sharedData( false ), bpp(bpp), height( height ), width( width ), lutSize( 256 )
+	{
+		lut = new RGBQUAD[ lutSize ];
+		source = new BYTE[ GetWidthInBytes() * height ];
+	}
+
+	Image( const Image& rhs ) :
+		sharedData( false ), bpp( rhs.bpp ), width( rhs.width ), height( rhs.height ), lutSize( rhs.lutSize )
+	{
+		lut = new RGBQUAD[ lutSize ];
+		source = new BYTE[ GetWidthInBytes() * height ];
+
+		for( int i = 0; i < lutSize; ++i ){
+			lut[i] = rhs.lut[i];
+		}
+
+		for( int i = 0; i < width * height; ++i ){
+			source[i] = rhs.source[i];
+		}
+	}
+
+	Image& operator=( const Image& rhs ){
+		// Handle assignation to self
+		if( this == &rhs ){
+			return *this;
+		}
+
+		bpp = rhs.bpp;
+		width = rhs.width;
+		height = rhs.height;
+		lutSize = rhs.lutSize;
+
+		if( !sharedData ){
+			delete[] lut;
+			delete[] source;
+
+			lut = new RGBQUAD[ lutSize ];
+			source = new BYTE[ GetWidthInBytes() * height ];
+		}
+
+		for( int i = 0; i < lutSize; ++i ){
+			lut[i] = rhs.lut[i];
+		}
+
+		for( int i = 0; i < width * height; ++i ){
+			source[i] = rhs.source[i];
+		}
+
+		return *this;
+	}
+
+	~Image(){
+		if( !sharedData ){
+			delete[] source;
+			delete[] lut;
+		}
 	}
 
 	int GetWidth() const { return width; };
@@ -46,7 +106,13 @@ public:
 
 	void Clear();
 
+	bool PositionInRange( int x, int y ){
+		return 0 <= x && x < GetHeight() && 0 <= y && y < GetWidth();
+	}
+
 private:
+	bool sharedData;
+
 	int bpp, width, height, lutSize;
 	RGBQUAD* lut;
 	BYTE* source;

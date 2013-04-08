@@ -69,6 +69,7 @@ public:
 	afx_msg void OnLaborator6DrawContourFromExternalDerivative();
 	afx_msg void OnLaborator6DrawImageContour();
 	afx_msg void OnLaborator6ExportContour();
+	afx_msg void OnLaborator7();
 };
 
 /////////////////////////////////////////////////////////////////////////////
