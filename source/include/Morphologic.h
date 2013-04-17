@@ -66,9 +66,30 @@ public:
 		}
 	}
 
-	static Image Erode( const Image& src, const StructuralElement* const element ){
-		Image dst( src );
-		return dst;
+	static void Erode( const Image& src, const StructuralElement* const element, Image& destination ){
+		for( int i = 0; i < src.GetHeight(); ++i ){
+			for( int j = 0; j < src.GetWidth(); ++j ){
+
+				// If the current color is BLACK
+				int es = element->size();
+				if( src.GetLutIndex(i, j) == 0 ){
+					bool erode = false;
+					for( int x = 0; x < es && !erode; ++x ){
+						for( int y = 0; y < es && !erode; ++y ){
+
+							int ix = i - es / 2 + x;
+							int iy = j - es / 2 + y;
+							if( destination.PositionInRange( ix, iy ) && element->get( x, y ) && src.GetLutIndex( ix, iy ) == 255 ){
+								erode = true;
+							}
+						}
+					}
+					if( erode ){
+						destination.SetPixelLUTIndex( i, j, 255 );
+					}
+				}
+			}
+		}
 	}
 
 };

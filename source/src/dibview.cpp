@@ -1187,7 +1187,12 @@ void CDibView::OnLaborator7()
 		imgDst = bufferTo;
 		break;
 	case 1:
-		Morphologic::Erode( imgSrc, Morphologic::ElementEightNeighbours );
+		// Erosion
+		for( int i = 0; i < count; ++i ){
+			Morphologic::Erode( bufferFrom, Morphologic::ElementEightNeighbours, bufferTo );
+			bufferFrom = bufferTo;
+		}
+		imgDst = bufferTo;
 		break;
 	}
 

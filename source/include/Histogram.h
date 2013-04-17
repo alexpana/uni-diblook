@@ -13,20 +13,20 @@ public:
 	CHistogram();
 	virtual ~CHistogram();
 
-	float normalizedValue( int index ){
+	float normalizedValue( int index ) const {
 		if( !normalized ){
 			normalize();
 		}
 		return valuesNormalized[index];
 	}
 
-	float normalizedMax(){
+	float normalizedMax() const {
 		return maxValueNormalized;
 	}
 
 protected:
 
-	void normalize(){
+	void normalize() const{
 		valuesNormalized = new float[length];
 		long sum = 0;
 		maxValueNormalized = 0;
@@ -43,9 +43,10 @@ protected:
 
 	}
 
-	bool normalized;
-	float* valuesNormalized;
-	float maxValueNormalized;
+private:
+	mutable bool normalized;
+	mutable float* valuesNormalized;
+	mutable float maxValueNormalized;
 };
 
 
