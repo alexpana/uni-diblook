@@ -31,6 +31,8 @@
 #include "BinaryObject.h"
 #include "Contour.h"
 #include "Morphologic.h"
+#include "Statistics.h"
+#include "HistogramTransforms.h"
 
 // STD Headers
 #include <math.h>
@@ -149,7 +151,9 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE, &CDibView::OnLaborator6DrawContourFromExternalDerivative)
 	ON_COMMAND(ID_LABORATOR6_EXPORTCONTOUR, &CDibView::OnLaborator6ExportContour)
 	ON_COMMAND(ID_LABORATOR_LABORATOR7, &CDibView::OnLaborator7)
-
+	ON_COMMAND(ID_LABORATOR8_STATS, &CDibView::OnLaborator8Statistics)
+	ON_COMMAND(ID_LABORATOR8_TRANSFORM, &CDibView::OnLaborator8Transform)
+	ON_COMMAND(ID_LABORATOR8_NORMALIZE, &CDibView::OnLaborator8Normalize)
 	ON_WM_LBUTTONDBLCLK()
 
 	//}}AFX_MSG_MAP
@@ -695,7 +699,7 @@ CHistogram* getHistogram( BYTE* image, int width, int height ){
 	histogram->maxValue = 0;
 	for( int i = 0; i < width; ++i ){
 		for( int j = 0; j < height; ++j ){
-			int val = getPixelColor(image, width, i, j, 8 ) & 0xff;
+			int val = getPixelColor(image, width, j, i, 8 ) & 0xff;
 			histogram->values[val] += 1;
 			if( histogram->values[val] > histogram->maxValue ){
 				histogram->maxValue = histogram->values[val];
@@ -1188,4 +1192,139 @@ void CDibView::OnLaborator7()
 	}
 
 	END_PROCESSING( "Morphologic Transformation" );
+}
+
+void CDibView::OnLaborator8Statistics()
+{
+	BEGIN_SOURCE_PROCESSING;
+
+	CHistogram* histogram = nullptr;
+
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
+		histogram = getHistogram( lpSrc, dwWidth, dwHeight );
+	} else {
+		return;
+	}
+
+	Statistics stats( histogram, dwWidth * dwHeight );
+	stats.ShowStatistics();
+
+	END_SOURCE_PROCESSING;
+}
+
+void CDibView::OnLaborator8Transform()
+{
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	CHistogram* histogram = nullptr;
+
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
+		histogram = getHistogram( lpSrc, dwWidth, dwHeight );
+	} else {
+		return;
+	}
+
+	HistogramTransforms histDlg;
+	histDlg.DoModal();
+
+	float gamma = histDlg.Gamma;
+	float luminosity = histDlg.Lum;
+	int gOutMin = (int)histDlg.GMin;
+	int gOutMax = (int)histDlg.GMax;
+	int gInMin = 0;
+	int gInMax = 255;
+
+	while( histogram->values[gInMin++] == 0 );
+	while( histogram->values[gInMax--] == 0 );
+
+	float ratio = (float)(gOutMax - gOutMin) / (float)(gInMax - gInMin );
+
+	switch( histDlg.Operation ){
+	case 0:
+		// Contrast
+		for( int i = 0; i < imgDst.GetHeight(); ++i ){
+			for( int j = 0; j < imgDst.GetWidth(); ++j )
+			{
+				int gIn = imgSrc.GetLutIndex(i, j);
+				int value = gOutMin + (float)( gIn - gInMin ) * ratio;
+				imgDst.SetPixelLUTIndex(i, j, value );
+			}
+		}
+		break;
+	case 1:
+		// Gama
+		for( int i = 0; i < imgDst.GetHeight(); ++i ){
+			for( int j = 0; j < imgDst.GetWidth(); ++j )
+			{
+				imgDst.SetPixelLUTIndex(i, j, (int)(255.0f * pow( (imgSrc.GetLutIndex(i, j) / 255.0f), gamma )) );
+			}
+		}
+		break;
+	case 2:
+		// Luminosity
+		for( int i = 0; i < imgDst.GetHeight(); ++i ){
+			for( int j = 0; j < imgDst.GetWidth(); ++j )
+			{
+				int value = imgSrc.GetLutIndex(i, j) + luminosity;
+				if( value < 0 ) value = 0;
+				if( value > 255 ) value = 255;
+				imgDst.SetPixelLUTIndex(i, j, value );
+			}
+		}
+		break;
+	case 3:
+		// Inverse
+		for( int i = 0; i < imgDst.GetHeight(); ++i ){
+			for( int j = 0; j < imgDst.GetWidth(); ++j )
+			{
+				imgDst.SetPixelLUTIndex(i, j, 255 - imgSrc.GetLutIndex(i, j) );
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
+	END_PROCESSING("Histogram Transform")
+}
+
+void CDibView::OnLaborator8Normalize()
+{
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	CHistogram* histogram = nullptr;
+
+	LPBITMAPINFO pBitmapInfoSrc = (LPBITMAPINFO)lpS;
+	if( pBitmapInfoSrc->bmiHeader.biBitCount == 8 ){
+		histogram = getHistogram( lpSrc, dwWidth, dwHeight );
+	} else {
+		return;
+	}
+
+	float A[255];
+	A[0] = histogram->normalizedValue(0);
+	for( int i = 1; i < 255; ++i ){
+		A[i] = A[i-1] + histogram->normalizedValue(i);
+	}
+
+	for( int i = 0; i < imgDst.GetHeight(); ++i ){
+		for( int j = 0; j < imgDst.GetWidth(); ++j )
+		{
+			int value = 255 * A[imgSrc.GetLutIndex(i, j)];
+			if( value < 0 ) value = 0;
+			if( value > 255 ) value = 255;
+
+			imgDst.SetPixelLUTIndex(i, j, value );
+		}
+	}
+
+	END_PROCESSING("Histogram Normalization")
 }

@@ -70,6 +70,9 @@ public:
 	afx_msg void OnLaborator6DrawImageContour();
 	afx_msg void OnLaborator6ExportContour();
 	afx_msg void OnLaborator7();
+	afx_msg void OnLaborator8Statistics();
+	afx_msg void OnLaborator8Transform();
+	afx_msg void OnLaborator8Normalize();
 };
 
 /////////////////////////////////////////////////////////////////////////////

@@ -174,6 +174,12 @@ BEGIN
             MENUITEM "Draw Contour from Derivative", ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE
         END
         MENUITEM "Laborator7",                  ID_LABORATOR4_PX
+        POPUP "Laborator8"
+        BEGIN
+            MENUITEM "Statistics",                  ID_LABORATOR8_STATS
+            MENUITEM "Transform",                   ID_LABORATOR8_TRANSFORM
+            MENUITEM "Normalize",                   ID_LABORATOR8_NORMALIZE
+        END
     END
 END
 
@@ -267,6 +273,24 @@ BEGIN
     LTEXT           "Operation",IDC_STATIC,7,28,33,12,SS_CENTERIMAGE
 END
 
+IDD_DIALOG4 DIALOGEX 0, 0, 164, 110
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Histogram Transforms"
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,54,90,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,108,90,50,14
+    LTEXT           "G Min",IDC_STATIC,6,8,18,8
+    LTEXT           "G Max",IDC_STATIC,6,24,26,12
+    LTEXT           "Gamma",IDC_STATIC,6,40,24,8
+    LTEXT           "Lum",IDC_STATIC,6,57,19,14
+    EDITTEXT        IDC_EDIT1,36,8,121,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT2,36,24,121,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT3,36,40,121,12,ES_AUTOHSCROLL
+    EDITTEXT        IDC_EDIT4,36,57,121,12,ES_AUTOHSCROLL
+    COMBOBOX        IDC_COMBO1,8,74,150,71,CBS_DROPDOWN | CBS_SORT | WS_VSCROLL | WS_TABSTOP
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -311,6 +335,14 @@ BEGIN
         TOPMARGIN, 7
         BOTTOMMARGIN, 61
     END
+
+    IDD_DIALOG4, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 157
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 103
+    END
 END
 #endif    // APSTUDIO_INVOKED
 
@@ -335,6 +367,19 @@ BEGIN
 "\000" 
     IDC_COMBO1, 0x403, 13, 0
 0x7241, 0x6165, 0x4620, 0x6c69, 0x696c, 0x676e, "\000" 
+    0
+END
+
+IDD_DIALOG4 DLGINIT
+BEGIN
+    IDC_COMBO1, 0x403, 9, 0
+0x654e, 0x6167, 0x6974, 0x6576, "\000" 
+    IDC_COMBO1, 0x403, 9, 0
+0x6f43, 0x746e, 0x6172, 0x7473, "\000" 
+    IDC_COMBO1, 0x403, 6, 0
+0x6147, 0x6d6d, 0x0061, 
+    IDC_COMBO1, 0x403, 11, 0
+0x754c, 0x696d, 0x6f6e, 0x6973, 0x7974, "\000" 
     0
 END
 

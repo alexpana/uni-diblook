@@ -19,9 +19,12 @@
 #define IDD_DIALOG3                     107
 #define IDC_STATIC6                     108
 #define IDC_STATIC7                     109
+#define IDD_DIALOG4                     109
 #define IDC_STATIC9                     110
 #define IDC_COMBO1                      112
 #define IDC_EDIT2                       114
+#define IDC_EDIT3                       116
+#define IDC_EDIT4                       117
 #define ID_PROCESSING_DUPLICATE         32770
 #define ID_PROCESSING_PARCURGERESIMPLA  32771
 #define ID_PROCESSING_MULTIPLETHRESHOLDING 32772
@@ -58,14 +61,18 @@
 #define ID_LABORATOR6_DRAWCONTOUR2      32795
 #define ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE 32796
 #define ID_LABORATOR6_EXPORTCONTOUR     32797
+#define ID_LABORATOR8_STATISTICS        32797
+#define ID_LABORATOR8_STATS             32798
+#define ID_LABORATOR8_TRANSFORM         32799
+#define ID_LABORATOR8_NORMALIZE         32800
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        109
-#define _APS_NEXT_COMMAND_VALUE         32795
-#define _APS_NEXT_CONTROL_VALUE         116
+#define _APS_NEXT_RESOURCE_VALUE        111
+#define _APS_NEXT_COMMAND_VALUE         32801
+#define _APS_NEXT_CONTROL_VALUE         118
 #define _APS_NEXT_SYMED_VALUE           102
 #endif
 #endif
