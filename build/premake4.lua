@@ -16,21 +16,30 @@ solution "diblook"
 project "diblook"
 	language "C++"
 	kind "WindowedApp"
-	targetdir( rootdir.."/binaries" )
+	targetdir ( rootdir.."/binaries" )
 	
-	resincludedirs{ rootdir.."/res" }
+	resincludedirs { rootdir.."/res" }
 	
 	flags { "StaticRuntime", "WinMain" }
     
-	files{
+	files {
 		rootdir.."/source/include/**.h",
 		rootdir.."/source/include/*.rc",
 		rootdir.."/source/src/**.cpp"
 	}
 	
-	includedirs{
+	libdirs {
+		"../libraries"
+	}
+
+	includedirs {
 		rootdir.."/source/include"
 	}
+
+	links {
+		"dibfft"
+	}
+
 	
 	configuration "Debug"
 		defines { "DEBUG" }
