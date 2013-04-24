@@ -24,15 +24,18 @@
 #include "ThresholdDlg.h"
 
 // Personal Headers
-#include "Histogram.h"
-#include "HistogramDlg.h"
-#include "DlgSelectMorphologicOperation.h"
-#include "Image.h"
 #include "BinaryObject.h"
 #include "Contour.h"
+#include "Convolution.h"
+#include "ConvolutionKernel.h"
+#include "DlgSelectMorphologicOperation.h"
+#include "DlgConvolution.h"
+#include "Histogram.h"
+#include "HistogramDlg.h"
+#include "HistogramTransforms.h"
+#include "Image.h"
 #include "Morphologic.h"
 #include "Statistics.h"
-#include "HistogramTransforms.h"
 
 // STD Headers
 #include <math.h>
@@ -154,6 +157,8 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR8_STATS, &CDibView::OnLaborator8Statistics)
 	ON_COMMAND(ID_LABORATOR8_TRANSFORM, &CDibView::OnLaborator8Transform)
 	ON_COMMAND(ID_LABORATOR8_NORMALIZE, &CDibView::OnLaborator8Normalize)
+	ON_COMMAND(ID_LABORATOR9_CONVOLUTION, &CDibView::OnLaborator9Convolution)
+
 	ON_WM_LBUTTONDBLCLK()
 
 	//}}AFX_MSG_MAP
@@ -863,14 +868,6 @@ int Parent( int a, int* parent ){
 		p = parent[p];
 	}
 
-	// compact
-	/*
-	while( parent[a] != a ){
-		a = parent[a];
-		parent[a] = p;
-	}
-	*/
-
 	return p;
 }
 
@@ -1332,4 +1329,49 @@ void CDibView::OnLaborator8Normalize()
 	}
 
 	END_PROCESSING("Histogram Normalization")
+}
+
+void CDibView::OnLaborator9Convolution()
+{
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	DlgConvolution dialog;
+	dialog.DoModal();
+	const ConvolutionKernel* kernel;
+
+	switch( dialog.mIndex ){
+
+	case 0:
+		kernel = new ConvolutionKernel( 
+			dialog.m11, dialog.m12, dialog.m13, 
+			dialog.m21, dialog.m22, dialog.m23, 
+			dialog.m31, dialog.m32, dialog.m33
+		);
+		break;
+	case 1:
+		kernel = ConvolutionKernel::AVERAGE;
+		break;
+	case 2:
+		kernel = ConvolutionKernel::GAUSSIAN;
+		break;
+	case 3:
+		kernel = ConvolutionKernel::LAPLACIAN4;
+		break;
+	case 4:
+		kernel = ConvolutionKernel::LAPLACIAN8;
+		break;
+	case 5:
+		kernel = ConvolutionKernel::HIGHPASS5;
+		break;
+	case 6:
+		kernel = ConvolutionKernel::HIGHPASS9;
+		break;
+	}
+
+	Convolution::ApplyKernel( imgSrc, kernel, imgDst );
+
+	END_PROCESSING("Convolution")
 }
