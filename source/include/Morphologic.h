@@ -11,7 +11,7 @@ public:
 	}
 
 	StructuralElement( std::string structure ){
-		_size = (int)sqrt( structure.length() );
+		_size = (int)sqrt( (float)structure.length() );
 		mask = new bool[_size*_size];
 
 		for( int i = 0; i < _size; ++i ){

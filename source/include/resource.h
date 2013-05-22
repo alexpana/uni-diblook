@@ -24,6 +24,7 @@
 #define IDD_DIALOG5                     111
 #define IDC_COMBO1                      112
 #define IDC_EDIT7                       113
+#define IDD_DIALOG6                     113
 #define IDC_EDIT2                       114
 #define IDC_EDIT10                      114
 #define IDC_EDIT5                       115
@@ -76,13 +77,20 @@
 #define ID_LABORATOR8_NORMALIZE         32800
 #define ID_LABORATOR_LABORATOR9         32801
 #define ID_LABORATOR9_CONVOLUTION       32802
+#define ID_LABORATOR_LABORATOR11        32803
+#define ID_LABORATOR11_MEDIAN3          32804
+#define ID_LABORATOR11_MEDIAN5          32805
+#define ID_LABORATOR11_MEDIAN7          32806
+#define ID_LABORATOR11_MEDIAN           32807
+#define ID_LABORATOR11_GAUSSIAN         32808
+#define ID_LABORATOR11_BIGAUSSIAN       32809
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        113
-#define _APS_NEXT_COMMAND_VALUE         32803
+#define _APS_NEXT_RESOURCE_VALUE        114
+#define _APS_NEXT_COMMAND_VALUE         32810
 #define _APS_NEXT_CONTROL_VALUE         119
 #define _APS_NEXT_SYMED_VALUE           102
 #endif

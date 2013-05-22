@@ -11,20 +11,32 @@ public:
 	static const ConvolutionKernel* HIGHPASS5;
 	static const ConvolutionKernel* HIGHPASS9;
 
+	ConvolutionKernel()
+	{
+		width = height = 0;
+	}
+
 	ConvolutionKernel( double m11, double m12, double m13, double m21, double m22, double m23, double m31, double m32, double m33 )
 	{
+		width = 3;
+		height = 3;
 		values[0] = m11; values[1] = m12; values[2] = m13;
 		values[3] = m21; values[4] = m22; values[5] = m23;
 		values[6] = m31; values[7] = m32; values[8] = m33;
 		Normalize();
 	}
 
-	int Size() const
+	virtual int Width() const
 	{
-		return 3;
+		return width;
 	}
 
-	double ValueAt( int x, int y ) const
+	virtual int Height() const
+	{
+		return height;
+	}
+
+	virtual double ValueAt( int x, int y ) const
 	{
 		if( x < 0 || x > 2 || y < 0 || y > 2 ){
 			return 0;
@@ -34,6 +46,8 @@ public:
 
 private:
 	double values[9];
+
+	int width, height;
 
 	void Normalize()
 	{

@@ -74,6 +74,9 @@ public:
 	afx_msg void OnLaborator8Transform();
 	afx_msg void OnLaborator8Normalize();
 	afx_msg void OnLaborator9Convolution();
+	afx_msg void OnLaborator11Median();
+	afx_msg void OnLaborator11Gaussian();
+	afx_msg void OnLaborator11BiGaussian();
 };
 
 /////////////////////////////////////////////////////////////////////////////

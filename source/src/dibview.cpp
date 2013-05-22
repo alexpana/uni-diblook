@@ -30,12 +30,16 @@
 #include "ConvolutionKernel.h"
 #include "DlgSelectMorphologicOperation.h"
 #include "DlgConvolution.h"
+#include "GaussianKernel.h"
 #include "Histogram.h"
 #include "HistogramDlg.h"
 #include "HistogramTransforms.h"
 #include "Image.h"
+#include "MedianFilter.h"
 #include "Morphologic.h"
 #include "Statistics.h"
+#include "UniGaussianKernel.h"
+#include "ValueDialog.h"
 
 // STD Headers
 #include <math.h>
@@ -158,6 +162,10 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR8_TRANSFORM, &CDibView::OnLaborator8Transform)
 	ON_COMMAND(ID_LABORATOR8_NORMALIZE, &CDibView::OnLaborator8Normalize)
 	ON_COMMAND(ID_LABORATOR9_CONVOLUTION, &CDibView::OnLaborator9Convolution)
+
+	ON_COMMAND(ID_LABORATOR11_MEDIAN, &CDibView::OnLaborator11Median)
+	ON_COMMAND(ID_LABORATOR11_GAUSSIAN, &CDibView::OnLaborator11Gaussian)
+	ON_COMMAND(ID_LABORATOR11_BIGAUSSIAN, &CDibView::OnLaborator11BiGaussian)
 
 	ON_WM_LBUTTONDBLCLK()
 
@@ -1162,7 +1170,7 @@ void CDibView::OnLaborator7()
 	}
 
 	int count = 1;
-	sscanf( select.m_Count, "%d", &count );
+	sscanf_s( select.m_Count, "%d", &count );
 
 	BEGIN_PROCESSING();
 	CONSTRUCT_SOURCE_IMAGE( imgSrc );
@@ -1234,8 +1242,8 @@ void CDibView::OnLaborator8Transform()
 	HistogramTransforms histDlg;
 	histDlg.DoModal();
 
-	float gamma = histDlg.Gamma;
-	float luminosity = histDlg.Lum;
+	float gamma = (float)histDlg.Gamma;
+	float luminosity = (float)histDlg.Lum;
 	int gOutMin = (int)histDlg.GMin;
 	int gOutMax = (int)histDlg.GMax;
 	int gInMin = 0;
@@ -1253,7 +1261,7 @@ void CDibView::OnLaborator8Transform()
 			for( int j = 0; j < imgDst.GetWidth(); ++j )
 			{
 				int gIn = imgSrc.GetLutIndex(i, j);
-				int value = gOutMin + (float)( gIn - gInMin ) * ratio;
+				int value = (int)(gOutMin + (float)( gIn - gInMin ) * ratio);
 				imgDst.SetPixelLUTIndex(i, j, value );
 			}
 		}
@@ -1272,7 +1280,7 @@ void CDibView::OnLaborator8Transform()
 		for( int i = 0; i < imgDst.GetHeight(); ++i ){
 			for( int j = 0; j < imgDst.GetWidth(); ++j )
 			{
-				int value = imgSrc.GetLutIndex(i, j) + luminosity;
+				int value = (int)(imgSrc.GetLutIndex(i, j) + luminosity);
 				if( value < 0 ) value = 0;
 				if( value > 255 ) value = 255;
 				imgDst.SetPixelLUTIndex(i, j, value );
@@ -1320,7 +1328,7 @@ void CDibView::OnLaborator8Normalize()
 	for( int i = 0; i < imgDst.GetHeight(); ++i ){
 		for( int j = 0; j < imgDst.GetWidth(); ++j )
 		{
-			int value = 255 * A[imgSrc.GetLutIndex(i, j)];
+			int value = (int)(255 * A[imgSrc.GetLutIndex(i, j)]);
 			if( value < 0 ) value = 0;
 			if( value > 255 ) value = 255;
 
@@ -1345,7 +1353,7 @@ void CDibView::OnLaborator9Convolution()
 	switch( dialog.mIndex ){
 
 	case 0:
-		kernel = new ConvolutionKernel( 
+		kernel = new ConvolutionKernel(
 			dialog.m11, dialog.m12, dialog.m13, 
 			dialog.m21, dialog.m22, dialog.m23, 
 			dialog.m31, dialog.m32, dialog.m33
@@ -1374,4 +1382,74 @@ void CDibView::OnLaborator9Convolution()
 	Convolution::ApplyKernel( imgSrc, kernel, imgDst );
 
 	END_PROCESSING("Convolution")
+}
+
+void CDibView::OnLaborator11Median()
+{
+	CThresholdDlg dlg;
+	if( dlg.DoModal() == IDCANCEL ){
+		return;
+	}
+
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	int threshold = dlg.m_Value;
+
+	MedianFilter::ApplyKernel( imgSrc, imgDst, threshold, threshold );
+
+	END_PROCESSING("Median")
+
+}
+
+void CDibView::OnLaborator11Gaussian()
+{
+	ValueDialog dlg;
+	if( dlg.DoModal() == IDCANCEL ){
+		return;
+	}
+
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	double sigma = dlg.value;
+
+	ConvolutionKernel* kernel = new GaussianKernel(sigma);
+
+	Convolution::ApplyKernel( imgSrc, kernel, imgDst );
+
+	delete kernel;
+
+	END_PROCESSING("Median")
+}
+
+void CDibView::OnLaborator11BiGaussian()
+{
+	ValueDialog dlg;
+	if( dlg.DoModal() == IDCANCEL ){
+		return;
+	}
+
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	double sigma = dlg.value;
+
+	ConvolutionKernel* vertical = new UniGaussianKernel(sigma, Direction::VERTICAL);
+	ConvolutionKernel* horizontal = new UniGaussianKernel(sigma, Direction::HORIZONTAL);
+
+	Image temp( imgSrc );
+	Convolution::ApplyKernel( imgSrc, vertical, temp );
+	Convolution::ApplyKernel( temp, horizontal, imgDst );
+
+	delete vertical;
+	delete horizontal;
+
+	END_PROCESSING("Median")
 }

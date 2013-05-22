@@ -29,11 +29,13 @@ public:
 	Image( int bpp, int width, int height, RGBQUAD* lut, int lutSize, BYTE* source ) :
 		sharedData( true ), bpp(bpp), height( height ), width( width ), lutSize( lutSize ), lut( lut ), source( source )
 	{
+		widthInBytes = ( width * bpp  + 31 ) / 32 * 4;
 	}
 
 	Image( int bpp, int width, int height ) :
 		sharedData( false ), bpp(bpp), height( height ), width( width ), lutSize( 256 )
 	{
+		widthInBytes = ( width * bpp  + 31 ) / 32 * 4;
 		lut = new RGBQUAD[ lutSize ];
 		source = new BYTE[ GetWidthInBytes() * height ];
 	}
@@ -41,6 +43,7 @@ public:
 	Image( const Image& rhs ) :
 		sharedData( false ), bpp( rhs.bpp ), width( rhs.width ), height( rhs.height ), lutSize( rhs.lutSize )
 	{
+		widthInBytes = ( width * bpp  + 31 ) / 32 * 4;
 		lut = new RGBQUAD[ lutSize ];
 		source = new BYTE[ GetWidthInBytes() * height ];
 
@@ -63,6 +66,7 @@ public:
 		width = rhs.width;
 		height = rhs.height;
 		lutSize = rhs.lutSize;
+		widthInBytes = ( width * bpp  + 31 ) / 32 * 4;
 
 		if( !sharedData ){
 			delete[] lut;
@@ -90,10 +94,10 @@ public:
 		}
 	}
 
-	int GetWidth() const { return width; };
-	int GetHeight() const{ return height; };
-	int GetWidthInBytes() const { 
-		return ( width * bpp  + 31 ) / 32 * 4; 
+	inline int GetWidth() const { return width; };
+	inline int GetHeight() const{ return height; };
+	inline int GetWidthInBytes() const { 
+		return widthInBytes; 
 	}
 
 	void SetPixelLUTIndex( const int x, const int y, const int index );
@@ -101,6 +105,8 @@ public:
 	void SetLUTColor( int index, const Color& color );
 
 	Color GetPixelColor( const int x, const int y) const;
+
+	int Get8BitGrayscaleValue( int x, int y ) const;
 
 	int GetLutIndex( const int x, const int y ) const;
 
@@ -113,7 +119,7 @@ public:
 private:
 	bool sharedData;
 
-	int bpp, width, height, lutSize;
+	int bpp, width, height, lutSize, widthInBytes;
 	RGBQUAD* lut;
 	BYTE* source;
 };

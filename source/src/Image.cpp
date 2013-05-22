@@ -39,6 +39,10 @@ Color Image::GetPixelColor( const int x, const int y) const {
 	}
 }
 
+int Image::Get8BitGrayscaleValue( int x, int y ) const {
+	return lut[source[ x * widthInBytes + y ]].rgbBlue;
+}
+
 int Image::GetLutIndex( const int x, const int y ) const {
 	int w = GetWidthInBytes();
 

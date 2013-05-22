@@ -41,7 +41,7 @@ public:
 	int ManhattanThreshold()
 	{
 		float* A = new float[maxIntensity];
-		A[0] = pixelCount;
+		A[0] = (float)pixelCount;
 		int maxArg = 0;
 
 		for( int i = 1; i < maxIntensity; ++i )
