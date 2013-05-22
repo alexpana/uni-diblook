@@ -77,6 +77,9 @@ public:
 	afx_msg void OnLaborator11Median();
 	afx_msg void OnLaborator11Gaussian();
 	afx_msg void OnLaborator11BiGaussian();
+	afx_msg void OnLaborator12EdgeDetect();
+	afx_msg void OnLaborator12CannyPart1();
 };
 
 /////////////////////////////////////////////////////////////////////////////
+

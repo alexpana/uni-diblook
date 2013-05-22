@@ -30,6 +30,7 @@
 #include "ConvolutionKernel.h"
 #include "DlgSelectMorphologicOperation.h"
 #include "DlgConvolution.h"
+#include "EdgeDetectDialog.h"
 #include "GaussianKernel.h"
 #include "Histogram.h"
 #include "HistogramDlg.h"
@@ -152,7 +153,6 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR3_DITHER, &CDibView::OnLaborator3Dither)
 	ON_COMMAND(ID_LABORATOR4_BINARYOBJECTSINFORMATION, &CDibView::OnLaborator4BinaryObjectsInformation)
 	ON_COMMAND(ID_LABORATOR5_MARKOBJECTS, &CDibView::OnLaborator5MarkObjects)
-
 	ON_COMMAND(ID_LABORATOR6_DRAWCONTOUR, &CDibView::OnLaborator6DrawImageContour)
 	ON_COMMAND(ID_LABORATOR6_DRAWCONTOURFROMINDEX, &CDibView::OnLaborator6DrawContourFromExternalDirections)
 	ON_COMMAND(ID_LABORATOR6_DRAWCONTOURFROMDERIVATIVE, &CDibView::OnLaborator6DrawContourFromExternalDerivative)
@@ -162,10 +162,11 @@ BEGIN_MESSAGE_MAP(CDibView, CScrollView)
 	ON_COMMAND(ID_LABORATOR8_TRANSFORM, &CDibView::OnLaborator8Transform)
 	ON_COMMAND(ID_LABORATOR8_NORMALIZE, &CDibView::OnLaborator8Normalize)
 	ON_COMMAND(ID_LABORATOR9_CONVOLUTION, &CDibView::OnLaborator9Convolution)
-
 	ON_COMMAND(ID_LABORATOR11_MEDIAN, &CDibView::OnLaborator11Median)
 	ON_COMMAND(ID_LABORATOR11_GAUSSIAN, &CDibView::OnLaborator11Gaussian)
 	ON_COMMAND(ID_LABORATOR11_BIGAUSSIAN, &CDibView::OnLaborator11BiGaussian)
+	ON_COMMAND(ID_LABORATOR12_EDGEDETECT, &CDibView::OnLaborator12EdgeDetect)
+	ON_COMMAND(ID_LABORATOR12_CANNYPART1, &CDibView::OnLaborator12CannyPart1)
 
 	ON_WM_LBUTTONDBLCLK()
 
@@ -1450,6 +1451,185 @@ void CDibView::OnLaborator11BiGaussian()
 
 	delete vertical;
 	delete horizontal;
+
+	END_PROCESSING("Median")
+}
+
+void EdgeDetectMagnitude( const Image& imgTmpX, const Image& imgTmpY, Image& imgDst ) 
+{
+	static double scale = 255.0 / 361.0;
+	for( int i = imgTmpX.GetHeight() - 1; i >= 0; --i ){
+		for( int j = imgTmpX.GetWidth() - 1; j >= 0; --j ){
+			int valueX = imgTmpX.Get8BitGrayscaleValue(i, j);
+			int valueY = imgTmpY.Get8BitGrayscaleValue(i, j);
+			int value = clamp( 0.0, 255.0, sqrt( valueX * valueX + valueY * valueY ) * scale );
+			imgDst.SetPixelLUTIndex(i, j, value);
+		}
+	}
+}
+
+void EdgeDetectDirection( const Image& imgTmpX, const Image& imgTmpY, Image& imgDst ) 
+{
+	static double scale = 255.0 / 6.3;
+	for( int i = imgTmpX.GetHeight() - 1; i >= 0; --i ){
+		for( int j = imgTmpX.GetWidth() - 1; j >= 0; --j ){
+			int valueX = imgTmpX.Get8BitGrayscaleValue(i, j);
+			int valueY = imgTmpY.Get8BitGrayscaleValue(i, j);
+			int value = (atan2l( (double)valueY, (double)valueX ) + 3.14156) * scale;
+			imgDst.SetPixelLUTIndex(i, j, value);
+		}
+	}
+}
+
+void EdgeDetectDiscreteDirection( const Image& imgTmpX, const Image& imgTmpY, Image& imgDst ) 
+{
+	double start = 3.14156 / 16.0;
+	double step = 3.14156 / 8.0;
+	for( int i = imgTmpX.GetHeight() - 1; i >= 0; --i ){
+		for( int j = imgTmpX.GetWidth() - 1; j >= 0; --j ){
+			int valueX = imgTmpX.Get8BitGrayscaleValue(i, j);
+			int valueY = imgTmpY.Get8BitGrayscaleValue(i, j);
+			double angle = abs(atan2l( (double)valueY, (double)valueX ));
+			int value = 0;
+			if( angle < start ) {
+				value = 0;
+			} else if( angle < start + step ) {
+				value = 1;
+			} else if( angle < start + 2 * step ) {
+				value = 2;
+			} else {
+				value = 3;
+			}
+			imgDst.SetPixelLUTIndex(i, j, value);
+		}
+	}
+}
+
+void EdgeDetectAlgorithm( const Image& imgSrc, Image& imgDst, const ConvolutionKernel* kernelX, const ConvolutionKernel* kernelY, int algorithm ){
+
+	if( algorithm == 0 ){
+		Convolution::ApplyKernel(imgSrc, kernelX, imgDst);
+		return;
+	}
+
+	if( algorithm == 1 ){
+		Convolution::ApplyKernel(imgSrc, kernelY, imgDst);
+		return;
+	}
+
+	if( algorithm == 2 ){
+		Image imgTmpX = Image(imgSrc);
+		Image imgTmpY = Image(imgSrc);
+		Convolution::ApplyKernel(imgSrc, kernelX, imgTmpX);
+		Convolution::ApplyKernel(imgSrc, kernelY, imgTmpY);
+		EdgeDetectMagnitude( imgTmpX, imgTmpY, imgDst );
+		return;
+	}
+
+	if( algorithm == 3 ){
+		Image imgTmpX = Image(imgSrc);
+		Image imgTmpY = Image(imgSrc);
+		Convolution::ApplyKernel(imgSrc, kernelX, imgTmpX);
+		Convolution::ApplyKernel(imgSrc, kernelY, imgTmpY);
+		EdgeDetectDirection( imgTmpX, imgTmpY, imgDst );
+		return;
+	}
+
+	if( algorithm == 4 ){
+		Image imgTmpX = Image(imgSrc);
+		Image imgTmpY = Image(imgSrc);
+		Convolution::ApplyKernel(imgSrc, kernelX, imgTmpX);
+		Convolution::ApplyKernel(imgSrc, kernelY, imgTmpY);
+		EdgeDetectDiscreteDirection( imgTmpX, imgTmpY, imgDst );
+		return;
+	}
+}
+
+void CDibView::OnLaborator12EdgeDetect()
+{
+
+	static ConvolutionKernel prewittX(-1, 0, 1, -1, 0, 1, -1, 0, 1);
+	static ConvolutionKernel prewittY(1, 1, 1, 0, 0, 0, -1, -1, -1);
+	static ConvolutionKernel sobelX(-1, 0, 1, -2, 0, 2, -1, 0, 1);
+	static ConvolutionKernel sobelY(1, 2, 1, 0, 0, 0, -1, -2, -1);
+	static ConvolutionKernel robertsX(1, 0, 0, 0, -1, 0, 0, 0, 0);
+	static ConvolutionKernel robertsY(0, -1, 0, 1, 0, 0, 0, 0, 0);
+
+	EdgeDetectDialog dlg;
+	if( dlg.DoModal() == IDCANCEL ){
+		return;
+	}
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	int type = dlg.type;
+	int value = dlg.value;
+
+	if( type == 0 ){
+		EdgeDetectAlgorithm( imgSrc, imgDst, &prewittX, &prewittY, value );
+	}
+
+	if( type == 1 ){
+		EdgeDetectAlgorithm( imgSrc, imgDst, &sobelX, &sobelY, value );
+	}
+
+	if( type == 2 ){
+		EdgeDetectAlgorithm( imgSrc, imgDst, &robertsX, &robertsY, value );
+	}
+
+	END_PROCESSING("Median")
+}
+
+#define _MAG(x,y) (mag.Get8BitGrayscaleValue((x),(y)))
+
+void CannyFilterMaxima( const Image& src, const Image& mag, const Image& dir, Image& dst ){
+	static double scale = 255.0 / 6.3;
+	for( int i = src.GetHeight() - 2; i >= 1; --i ){
+		for( int j = src.GetWidth() - 2; j >= 1; --j ){
+			bool keeper = false;
+			switch( dir.Get8BitGrayscaleValue(i, j) ){
+			case 0:
+				if( _MAG(i, j) > _MAG(i-1,j) && _MAG(i, j) > _MAG(i+1,j) ) keeper = true; break;
+			case 1:
+				if( _MAG(i, j) > _MAG(i-1,j+1) && _MAG(i, j) > _MAG(i+1,j-1) ) keeper = true; break;
+			case 2:
+				if( _MAG(i, j) > _MAG(i,j+1) && _MAG(i, j) > _MAG(i,j-1) ) keeper = true; break;
+			case 3:
+				if( _MAG(i, j) > _MAG(i-1,j-1) && _MAG(i, j) > _MAG(i+1,j+1) ) keeper = true; break;
+			}
+			if( keeper ){
+				dst.SetPixelLUTIndex( i, j, mag.Get8BitGrayscaleValue(i, j));
+			} else {
+				dst.SetPixelLUTIndex(i, j, 0);
+			}
+		}
+	}
+}
+
+void CDibView::OnLaborator12CannyPart1(){
+	static ConvolutionKernel sobelX(-1, 0, 1, -2, 0, 2, -1, 0, 1);
+	static ConvolutionKernel sobelY(1, 2, 1, 0, 0, 0, -1, -2, -1);
+
+	BEGIN_PROCESSING()
+
+	CONSTRUCT_SOURCE_IMAGE( imgSrc );
+	CONSTRUCT_DESTINATION_IMAGE( imgDst );
+
+	// Blur the image
+	Image blurred = Image(imgSrc);
+	Convolution::ApplyKernel(imgSrc, ConvolutionKernel::GAUSSIAN, blurred );
+
+	// Calcuate the magnitude and direction images
+	Image magnitude = Image( imgSrc );
+	Image direction = Image( imgSrc );
+
+	EdgeDetectAlgorithm( blurred, magnitude, &sobelX, &sobelY, 2 );
+	EdgeDetectAlgorithm( blurred, direction, &sobelX, &sobelY, 4 );
+
+	CannyFilterMaxima( imgSrc, magnitude, direction, imgDst );
+
 
 	END_PROCESSING("Median")
 }
